@@ -45,11 +45,23 @@ function toJpeg(source, sourceWidth, sourceHeight, maxDimension, quality) {
     const context = canvas.getContext("2d");
     context.drawImage(source, 0, 0, canvas.width, canvas.height);
 
-    return {
-        dataUrl: canvas.toDataURL("image/jpeg", quality),
-        width: canvas.width,
-        height: canvas.height,
-    };
+    return new Promise((resolve, reject) => {
+        canvas.toBlob(
+            blob => blob
+                ? resolve({
+                    // The JPEG is handed over as a stream reference rather than inside the
+                    // interop result. An interop result is a single SignalR message, and the
+                    // circuit's receive limit is 32kB by default — a sleeve photograph is an
+                    // order of magnitude past that, and exceeding it drops the connection
+                    // silently mid-capture. A stream reference is chunked under the limit.
+                    data: DotNet.createJSStreamReference(blob),
+                    width: canvas.width,
+                    height: canvas.height,
+                })
+                : reject(new Error("The canvas produced no image.")),
+            "image/jpeg",
+            quality);
+    });
 }
 
 export function captureFrame(video, maxDimension, quality) {
@@ -67,7 +79,7 @@ export async function captureFile(input, maxDimension, quality) {
 
     const bitmap = await createImageBitmap(file);
     try {
-        return toJpeg(bitmap, bitmap.width, bitmap.height, maxDimension, quality);
+        return await toJpeg(bitmap, bitmap.width, bitmap.height, maxDimension, quality);
     } finally {
         bitmap.close();
     }

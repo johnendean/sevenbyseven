@@ -4,47 +4,43 @@ namespace SevenBySeven.Tests.Scanning;
 
 public class ScanTests
 {
-    // A one-pixel JPEG is unnecessary here: FromDataUrl validates the envelope, not the pixels.
-    private const string Payload = "/9j/4AAQSkZJRg==";
-    private static readonly string ValidDataUrl = $"data:image/jpeg;base64,{Payload}";
+    // A whole JPEG is unnecessary here: FromJpeg validates the envelope, not the pixels.
+    private static readonly byte[] Jpeg = [0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10];
 
     [Fact]
-    public void FromDataUrl_reads_the_payload_and_dimensions()
+    public void FromJpeg_keeps_the_payload_and_dimensions()
     {
-        var scan = Scan.FromDataUrl(ValidDataUrl, 1600, 1200, CaptureSource.Camera);
+        var scan = Scan.FromJpeg(Jpeg, 1600, 1200, CaptureSource.Camera);
 
-        Assert.Equal(Convert.FromBase64String(Payload), scan.Image.ToArray());
+        Assert.Equal(Jpeg, scan.Image.ToArray());
         Assert.Equal("image/jpeg", scan.ContentType);
         Assert.Equal(1600, scan.Width);
         Assert.Equal(1200, scan.Height);
         Assert.Equal(CaptureSource.Camera, scan.Source);
-        Assert.Equal(Convert.FromBase64String(Payload).Length, scan.SizeBytes);
+        Assert.Equal(Jpeg.Length, scan.SizeBytes);
     }
 
     [Fact]
-    public void ToDataUrl_round_trips()
+    public void ToDataUrl_renders_the_payload_for_display()
     {
-        var scan = Scan.FromDataUrl(ValidDataUrl, 100, 100, CaptureSource.File);
+        var scan = Scan.FromJpeg(Jpeg, 100, 100, CaptureSource.File);
 
-        Assert.Equal(ValidDataUrl, scan.ToDataUrl());
+        Assert.Equal($"data:image/jpeg;base64,{Convert.ToBase64String(Jpeg)}", scan.ToDataUrl());
     }
 
     [Theory]
-    [InlineData("not a data url at all")]
-    [InlineData("data:image/jpeg;base64")]                  // no separator
-    [InlineData("data:image/jpeg,notbase64")]               // not declared base64
-    [InlineData("data:image/png;base64,iVBORw0KGgo=")]      // wrong image type
-    [InlineData("data:image/jpeg;base64,!!!not-base64!!!")]
-    [InlineData("data:image/jpeg;base64,")]                 // empty payload
-    public void FromDataUrl_rejects_malformed_input(string dataUrl) =>
+    [InlineData(new byte[0])]                                   // nothing came through
+    [InlineData(new byte[] { 0xFF, 0xD8 })]                     // truncated before the first marker
+    [InlineData(new byte[] { 0x89, 0x50, 0x4E, 0x47 })]         // a PNG
+    public void FromJpeg_rejects_anything_but_a_jpeg(byte[] bytes) =>
         Assert.Throws<FormatException>(
-            () => Scan.FromDataUrl(dataUrl, 100, 100, CaptureSource.Camera));
+            () => Scan.FromJpeg(bytes, 100, 100, CaptureSource.Camera));
 
     [Theory]
     [InlineData(0, 100)]
     [InlineData(100, 0)]
     [InlineData(-1, 100)]
-    public void FromDataUrl_rejects_impossible_dimensions(int width, int height) =>
+    public void FromJpeg_rejects_impossible_dimensions(int width, int height) =>
         Assert.Throws<ArgumentOutOfRangeException>(
-            () => Scan.FromDataUrl(ValidDataUrl, width, height, CaptureSource.Camera));
+            () => Scan.FromJpeg(Jpeg, width, height, CaptureSource.Camera));
 }

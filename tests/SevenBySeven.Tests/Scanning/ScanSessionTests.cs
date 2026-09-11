@@ -6,7 +6,7 @@ namespace SevenBySeven.Tests.Scanning;
 public class ScanSessionTests
 {
     private static Scan AnyScan() =>
-        Scan.FromDataUrl("data:image/jpeg;base64,/9j/4AAQSkZJRg==", 10, 10, CaptureSource.File);
+        Scan.FromJpeg(new byte[] { 0xFF, 0xD8, 0xFF, 0xE0 }, 10, 10, CaptureSource.File);
 
     [Fact]
     public void A_new_session_holds_no_scan()

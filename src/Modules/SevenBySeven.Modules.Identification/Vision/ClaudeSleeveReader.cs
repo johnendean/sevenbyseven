@@ -35,13 +35,14 @@ internal sealed class ClaudeSleeveReader(
         string contentType,
         CancellationToken cancellationToken = default)
     {
-        if (image.IsEmpty || !_options.IsConfigured)
+        if (!_options.IsConfigured)
         {
-            if (!_options.IsConfigured)
-            {
-                logger.LogWarning("No Anthropic API key is configured, so the sleeve was not read.");
-            }
+            throw new SleeveReadException(
+                "No Anthropic API key is configured, so the sleeve cannot be read.");
+        }
 
+        if (image.IsEmpty)
+        {
             return new SleeveDetails();
         }
 
@@ -98,7 +99,10 @@ internal sealed class ClaudeSleeveReader(
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogError(ex, "Reading the sleeve failed.");
-            return new SleeveDetails();
+
+            // The API's own words: it is the part that says what to change, and a
+            // swallowed failure here is indistinguishable from an illegible photograph.
+            throw new SleeveReadException($"The sleeve could not be read. {ex.Message}", ex);
         }
     }
 
