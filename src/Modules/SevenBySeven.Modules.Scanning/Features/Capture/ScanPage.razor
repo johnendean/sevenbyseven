@@ -146,6 +146,9 @@ else
 
     private const double JpegQuality = 0.85;
 
+    /// <summary>A downscaled sleeve runs to a few hundred kB; well past that is a fault.</summary>
+    private const long MaxImageBytes = 8L * 1024 * 1024;
+
     private IJSObjectReference? _camera;
     private ElementReference _video;
     private ElementReference _fileInput;
@@ -218,6 +221,7 @@ else
             return;
         }
 
+        _error = null;
         var result = await _camera.InvokeAsync<CaptureResult?>("captureFrame", _video, MaxDimension, JpegQuality);
         if (result is null)
         {
@@ -225,8 +229,10 @@ else
             return;
         }
 
-        await StopCamera();
-        Accept(result, CaptureSource.Camera);
+        if (await AcceptAsync(result, CaptureSource.Camera))
+        {
+            await StopCamera();
+        }
     }
 
     private async Task CaptureFromFile(ChangeEventArgs args)
@@ -245,7 +251,7 @@ else
                 return;
             }
 
-            Accept(result, CaptureSource.File);
+            await AcceptAsync(result, CaptureSource.File);
         }
         catch (JSException ex)
         {
@@ -259,16 +265,42 @@ else
         }
     }
 
-    private void Accept(CaptureResult result, CaptureSource source)
+    /// <summary>
+    /// Pulls the JPEG down the stream the browser opened and starts a Scan with it.
+    /// The bytes stream rather than ride the interop result because a photograph is far
+    /// past the circuit's 32kB receive limit, which would otherwise drop the connection.
+    /// </summary>
+    private async Task<bool> AcceptAsync(CaptureResult result, CaptureSource source)
     {
+        await using var data = result.Data;
+
+        if (data.Length > MaxImageBytes)
+        {
+            Logger.LogWarning("The browser offered {Length} bytes, past the {Limit} byte ceiling.", data.Length, MaxImageBytes);
+            _error = "That photograph is too large to read. Try again.";
+            return false;
+        }
+
         try
         {
-            Session.Set(Scan.FromDataUrl(result.DataUrl, result.Width, result.Height, source));
+            await using var stream = await data.OpenReadStreamAsync(MaxImageBytes);
+            using var buffer = new MemoryStream((int)data.Length);
+            await stream.CopyToAsync(buffer);
+
+            Session.Set(Scan.FromJpeg(buffer.ToArray(), result.Width, result.Height, source));
+            return true;
+        }
+        catch (Exception ex) when (ex is JSException or IOException)
+        {
+            Logger.LogError(ex, "The captured image could not be transferred.");
+            _error = "The captured image did not come through. Try again.";
+            return false;
         }
         catch (FormatException ex)
         {
-            Logger.LogError(ex, "The browser returned an unusable data URL.");
+            Logger.LogError(ex, "The browser returned an unusable image.");
             _error = "The captured image was unreadable.";
+            return false;
         }
     }
 
@@ -380,5 +412,5 @@ else
 
     private sealed record CameraProbe(bool HasMediaDevices, bool IsSecureContext);
 
-    private sealed record CaptureResult(string DataUrl, int Width, int Height);
+    private sealed record CaptureResult(IJSStreamReference Data, int Width, int Height);
 }

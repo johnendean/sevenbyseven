@@ -26,65 +26,39 @@ public sealed class Scan
     public int SizeBytes => Image.Length;
 
     /// <summary>
-    /// Parses the data URL the browser hands back after downscaling. Kept here rather
-    /// than in the page so it can be tested without a browser.
+    /// Takes the JPEG the browser produced after downscaling. Kept here rather than in
+    /// the page so it can be tested without a browser.
     /// </summary>
-    /// <exception cref="FormatException">The data URL is malformed or not base64 JPEG.</exception>
-    public static Scan FromDataUrl(string dataUrl, int width, int height, CaptureSource source)
+    /// <exception cref="FormatException">The bytes are empty or are not a JPEG.</exception>
+    public static Scan FromJpeg(ReadOnlyMemory<byte> bytes, int width, int height, CaptureSource source)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(dataUrl);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(width);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(height);
 
-        const string expectedPrefix = "data:";
-        if (!dataUrl.StartsWith(expectedPrefix, StringComparison.Ordinal))
+        if (bytes.IsEmpty)
         {
-            throw new FormatException("Not a data URL.");
+            throw new FormatException("The capture was empty.");
         }
 
-        var comma = dataUrl.IndexOf(',');
-        if (comma < 0)
+        // Every JPEG opens with the start-of-image marker followed by a marker byte. The
+        // pixels are the model's problem; this only rules out a truncated or wrong-format
+        // transfer before it reaches identification.
+        var span = bytes.Span;
+        if (span.Length < 3 || span[0] != 0xFF || span[1] != 0xD8 || span[2] != 0xFF)
         {
-            throw new FormatException("Data URL has no payload separator.");
-        }
-
-        var metadata = dataUrl[expectedPrefix.Length..comma];
-        if (!metadata.EndsWith(";base64", StringComparison.OrdinalIgnoreCase))
-        {
-            throw new FormatException("Data URL payload is not base64.");
-        }
-
-        var contentType = metadata[..^";base64".Length];
-        if (!string.Equals(contentType, JpegContentType, StringComparison.OrdinalIgnoreCase))
-        {
-            throw new FormatException($"Expected {JpegContentType} but got '{contentType}'.");
-        }
-
-        byte[] bytes;
-        try
-        {
-            bytes = Convert.FromBase64String(dataUrl[(comma + 1)..]);
-        }
-        catch (FormatException ex)
-        {
-            throw new FormatException("Data URL payload is not valid base64.", ex);
-        }
-
-        if (bytes.Length == 0)
-        {
-            throw new FormatException("Data URL payload is empty.");
+            throw new FormatException("The capture is not a JPEG.");
         }
 
         return new Scan
         {
             Image = bytes,
-            ContentType = contentType,
+            ContentType = JpegContentType,
             Width = width,
             Height = height,
             Source = source,
         };
     }
 
-    /// <summary>Rebuilds a data URL for display. The bytes are never written to disk.</summary>
+    /// <summary>Builds a data URL for display. The bytes are never written to disk.</summary>
     public string ToDataUrl() => $"data:{ContentType};base64,{Convert.ToBase64String(Image.Span)}";
 }
