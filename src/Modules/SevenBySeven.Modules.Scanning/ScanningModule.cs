@@ -13,9 +13,8 @@ public sealed class ScanningModule : IModule
 {
     public string Name => "Scanning";
 
-    public void RegisterServices(IServiceCollection services, IConfiguration configuration)
-    {
-    }
+    public void RegisterServices(IServiceCollection services, IConfiguration configuration) =>
+        services.AddScoped<ScanSession>();
 
     public void ConfigureModel(ModelBuilder modelBuilder)
     {

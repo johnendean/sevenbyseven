@@ -23,6 +23,9 @@
     <ProjectReference Include="..\..\src\SevenBySeven.AppHost\SevenBySeven.AppHost.csproj" />
     <ProjectReference Include="..\..\src\SevenBySeven.Shared\SevenBySeven.Shared.csproj" />
     <ProjectReference Include="..\..\src\Modules\SevenBySeven.Modules.Identification\SevenBySeven.Modules.Identification.csproj" />
+    <ProjectReference Include="..\..\src\Modules\SevenBySeven.Modules.Scanning\SevenBySeven.Modules.Scanning.csproj" />
+    <ProjectReference Include="..\..\src\Modules\SevenBySeven.Modules.Catalogue\SevenBySeven.Modules.Catalogue.csproj" />
+    <ProjectReference Include="..\..\src\Modules\SevenBySeven.Modules.Collection\SevenBySeven.Modules.Collection.csproj" />
   </ItemGroup>
 
 </Project>

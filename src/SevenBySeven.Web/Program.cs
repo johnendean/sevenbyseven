@@ -45,6 +45,9 @@ app.UseAntiforgery();
 app.MapDefaultEndpoints();
 app.MapStaticAssets();
 app.MapRazorComponents<App>()
-    .AddInteractiveServerRenderMode();
+    .AddInteractiveServerRenderMode()
+    // Server-side endpoint discovery is separate from the Router's AdditionalAssemblies:
+    // without this, a module's pages compile and link but 404.
+    .AddAdditionalAssemblies([.. ModuleCatalog.RoutableAssemblies]);
 
 app.Run();
