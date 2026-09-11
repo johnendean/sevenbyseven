@@ -1,0 +1,218 @@
+@page "/collection/add/{DiscogsReleaseId:int}"
+@rendermode InteractiveServer
+@inject IReleaseCatalogue Catalogue
+@inject IVinylCollection Collection
+@inject NavigationManager Navigation
+@inject ILogger<AddCopyPage> Logger
+
+<PageTitle>Add a record</PageTitle>
+
+<h1>Add to my collection</h1>
+
+@if (_release is null)
+{
+    @if (_fetching)
+    {
+        <p class="add-meta">Fetching the pressing from Discogs&hellip;</p>
+    }
+    else
+    {
+        <div class="alert alert-warning" role="alert">
+            <strong>That pressing could not be fetched.</strong>
+            <span>
+                Discogs may be unreachable, or the release may have been merged into another
+                since the search. Nothing has been added.
+            </span>
+        </div>
+
+        <div class="add-actions">
+            <button class="btn btn-primary" @onclick="Fetch">Try again</button>
+            <a class="btn btn-secondary" href="scan">Back to scanning</a>
+        </div>
+    }
+}
+else
+{
+    <div class="add-pressing">
+        @if (_release.ThumbnailUrl is { Length: > 0 } thumbnail)
+        {
+            <img src="@thumbnail" alt="" />
+        }
+
+        <div>
+            <strong>@_release.ArtistName &mdash; @_release.Title</strong>
+            <p class="add-meta">@_release.Pressing</p>
+            <p class="add-meta">
+                @(_release.Tracks.Count == 1 ? "1 track" : $"{_release.Tracks.Count} tracks") held in the catalogue.
+            </p>
+        </div>
+    </div>
+
+    @if (_error is not null)
+    {
+        <div class="alert alert-danger" role="alert">@_error</div>
+    }
+
+    <EditForm Model="_form" OnValidSubmit="Add" class="add-form">
+        <DataAnnotationsValidator />
+
+        <div class="add-field">
+            <label class="form-label" for="media">Media condition</label>
+            <InputSelect id="media" class="form-select" @bind-Value="_form.MediaCondition">
+                <option value="">Not graded</option>
+                @foreach (var grade in ConditionGrades.BestFirst)
+                {
+                    <option value="@grade">@grade.Label()</option>
+                }
+            </InputSelect>
+        </div>
+
+        <div class="add-field">
+            <label class="form-label" for="sleeve">Sleeve condition</label>
+            <InputSelect id="sleeve" class="form-select" @bind-Value="_form.SleeveCondition">
+                <option value="">Not graded</option>
+                @foreach (var grade in ConditionGrades.BestFirst)
+                {
+                    <option value="@grade">@grade.Label()</option>
+                }
+            </InputSelect>
+        </div>
+
+        <div class="add-field">
+            <label class="form-label" for="price">Price paid</label>
+            <div class="add-price">
+                <InputNumber id="price" class="form-control" step="0.01" @bind-Value="_form.PricePaid" />
+                <InputText id="currency" class="form-control" aria-label="Currency" @bind-Value="_form.Currency" />
+            </div>
+            <ValidationMessage For="() => _form.PricePaid" />
+            <ValidationMessage For="() => _form.Currency" />
+        </div>
+
+        <div class="add-field">
+            <label class="form-label" for="from">Bought from</label>
+            <InputText id="from" class="form-control" @bind-Value="_form.PurchasedFrom" />
+            <ValidationMessage For="() => _form.PurchasedFrom" />
+        </div>
+
+        <div class="add-field">
+            <label class="form-label" for="location">Kept</label>
+            <InputText id="location" class="form-control" placeholder="A shelf, a crate, the loft"
+                       @bind-Value="_form.Location" />
+            <ValidationMessage For="() => _form.Location" />
+        </div>
+
+        <div class="add-field">
+            <label class="form-label" for="notes">Notes</label>
+            <InputTextArea id="notes" class="form-control" rows="3" @bind-Value="_form.Notes" />
+            <ValidationMessage For="() => _form.Notes" />
+        </div>
+
+        <div class="add-actions">
+            <button class="btn btn-primary" type="submit" disabled="@_adding">
+                @(_adding ? "Adding…" : "Add to my collection")
+            </button>
+            <a class="btn btn-secondary" href="scan">Cancel</a>
+        </div>
+    </EditForm>
+
+    <p class="add-meta">
+        Every field is optional. Two copies of the same pressing are two records here, so
+        adding this again later is the right way to record a second one.
+    </p>
+}
+
+@code {
+    [Parameter]
+    public int DiscogsReleaseId { get; set; }
+
+    private readonly CopyForm _form = new();
+
+    private Release? _release;
+    private bool _fetching = true;
+    private bool _adding;
+    private string? _error;
+
+    protected override Task OnParametersSetAsync() => Fetch();
+
+    private async Task Fetch()
+    {
+        _fetching = true;
+        _error = null;
+
+        try
+        {
+            // First time this pressing is confirmed it is fetched from Discogs and cached;
+            // every time after, this is a read of our own catalogue.
+            _release = await Catalogue.EnsureAsync(DiscogsReleaseId);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Caching release {DiscogsReleaseId} failed.", DiscogsReleaseId);
+            _release = null;
+        }
+        finally
+        {
+            _fetching = false;
+        }
+    }
+
+    private async Task Add()
+    {
+        if (_release is null || _adding)
+        {
+            return;
+        }
+
+        _adding = true;
+        _error = null;
+
+        try
+        {
+            var copy = await Collection.AddAsync(_release.Id, _form.ToDetails());
+            Navigation.NavigateTo($"collection/{copy.Id}");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Adding a copy of release {ReleaseId} failed.", _release.Id);
+            _error = "That could not be added. The database may be unreachable.";
+            _adding = false;
+        }
+    }
+
+    /// <summary>
+    /// The form's own shape. Bound fields need setters and the lengths the database
+    /// will accept, neither of which belongs on <see cref="CopyDetails"/>.
+    /// </summary>
+    private sealed class CopyForm
+    {
+        public ConditionGrade? MediaCondition { get; set; }
+
+        public ConditionGrade? SleeveCondition { get; set; }
+
+        [Range(0, 1_000_000, ErrorMessage = "A price cannot be negative.")]
+        public decimal? PricePaid { get; set; }
+
+        [StringLength(3, MinimumLength = 3, ErrorMessage = "A currency is three letters, such as GBP.")]
+        public string? Currency { get; set; } = "GBP";
+
+        [StringLength(200)]
+        public string? PurchasedFrom { get; set; }
+
+        [StringLength(200)]
+        public string? Location { get; set; }
+
+        [StringLength(4000)]
+        public string? Notes { get; set; }
+
+        public CopyDetails ToDetails() => new()
+        {
+            MediaCondition = MediaCondition,
+            SleeveCondition = SleeveCondition,
+            PricePaid = PricePaid,
+            PricePaidCurrency = Currency,
+            PurchasedFrom = PurchasedFrom,
+            Location = Location,
+            Notes = Notes,
+        };
+    }
+}

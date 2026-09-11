@@ -1,0 +1,215 @@
+@page "/collection/{Id:guid}"
+@rendermode InteractiveServer
+@inject IVinylCollection Collection
+@inject NavigationManager Navigation
+
+<PageTitle>@(_copy?.Release is { } found ? $"{found.ArtistName} — {found.Title}" : "A record")</PageTitle>
+
+@if (_copy is null)
+{
+    <h1>Not in your collection</h1>
+    <p class="copy-meta">
+        @(_loaded ? "There is no such record here. It may already have been removed." : "Looking it up…")
+    </p>
+    <p><a class="btn btn-secondary" href="collection">Back to my collection</a></p>
+}
+else
+{
+    var release = _copy.Release!;
+
+    <h1>@release.ArtistName &mdash; @release.Title</h1>
+
+    <div class="copy-layout">
+        <div class="copy-sleeve">
+            @if ((release.CoverImageUrl ?? release.ThumbnailUrl) is { Length: > 0 } cover)
+            {
+                <img src="@cover" alt="The sleeve of @release.Title" />
+            }
+        </div>
+
+        <div class="copy-facts">
+            <h2>The pressing</h2>
+            <dl>
+                @if (release.LabelName is { Length: > 0 })
+                {
+                    <dt>Label</dt>
+                    <dd>@release.LabelName</dd>
+                }
+                @if (release.CatalogueNumber is { Length: > 0 })
+                {
+                    <dt>Catalogue number</dt>
+                    <dd>@release.CatalogueNumber</dd>
+                }
+                @if (release.Country is { Length: > 0 })
+                {
+                    <dt>Country</dt>
+                    <dd>@release.Country</dd>
+                }
+                @if (release.Released is { } released)
+                {
+                    <dt>Released</dt>
+                    <dd>@released</dd>
+                }
+                @if (release.FormatDescription is { Length: > 0 })
+                {
+                    <dt>Format</dt>
+                    <dd>@release.FormatDescription</dd>
+                }
+                @if (release.Barcode is { Length: > 0 })
+                {
+                    <dt>Barcode</dt>
+                    <dd>@release.Barcode</dd>
+                }
+                @if (release.Genres.Count > 0 || release.Styles.Count > 0)
+                {
+                    <dt>Filed under</dt>
+                    <dd>@string.Join(", ", release.Genres.Concat(release.Styles))</dd>
+                }
+            </dl>
+
+            <p class="copy-meta">
+                <a href="https://www.discogs.com/release/@release.DiscogsReleaseId" target="_blank" rel="noopener">
+                    This pressing on Discogs
+                </a>
+            </p>
+
+            <h2>This copy</h2>
+            <dl>
+                <dt>Added</dt>
+                <dd>@_copy.AddedOn.ToLocalTime().ToString("d MMMM yyyy")</dd>
+                @if (_copy.MediaCondition is { } media)
+                {
+                    <dt>Media</dt>
+                    <dd>@media.Label()</dd>
+                }
+                @if (_copy.SleeveCondition is { } sleeve)
+                {
+                    <dt>Sleeve</dt>
+                    <dd>@sleeve.Label()</dd>
+                }
+                @if (_copy.PricePaid is { } price)
+                {
+                    <dt>Paid</dt>
+                    <dd>@price.ToString("0.00") @_copy.PricePaidCurrency</dd>
+                }
+                @if (_copy.PurchasedFrom is { Length: > 0 })
+                {
+                    <dt>From</dt>
+                    <dd>@_copy.PurchasedFrom</dd>
+                }
+                @if (_copy.Location is { Length: > 0 })
+                {
+                    <dt>Kept</dt>
+                    <dd>@_copy.Location</dd>
+                }
+                @if (_copy.Notes is { Length: > 0 })
+                {
+                    <dt>Notes</dt>
+                    <dd>@_copy.Notes</dd>
+                }
+            </dl>
+        </div>
+    </div>
+
+    @if (release.Tracks.Count > 0)
+    {
+        <h2>Tracks</h2>
+        <table class="table copy-tracks">
+            <thead>
+                <tr>
+                    <th scope="col">Position</th>
+                    <th scope="col">Title</th>
+                    <th scope="col">Length</th>
+                    @if (_showsBpm)
+                    {
+                        <th scope="col">BPM</th>
+                    }
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var track in release.Tracks)
+                {
+                    <tr>
+                        <td>@track.Position</td>
+                        <td>@track.Title</td>
+                        <td>@Length(track.Duration)</td>
+                        @if (_showsBpm)
+                        {
+                            <td>@(track.Bpm?.ToString("0.#"))</td>
+                        }
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+
+    <div class="copy-actions">
+        <a class="btn btn-secondary" href="collection">Back to my collection</a>
+
+        @if (_confirmingRemoval)
+        {
+            <button class="btn btn-danger" @onclick="Remove" disabled="@_removing">
+                @(_removing ? "Removing…" : "Yes, remove it")
+            </button>
+            <button class="btn btn-link" @onclick="() => _confirmingRemoval = false" disabled="@_removing">Keep it</button>
+        }
+        else
+        {
+            <button class="btn btn-outline-danger" @onclick="() => _confirmingRemoval = true">Remove from collection</button>
+        }
+    </div>
+
+    @if (_confirmingRemoval)
+    {
+        <p class="copy-meta">
+            This removes your copy. The pressing stays in the catalogue, so adding it again
+            costs nothing.
+        </p>
+    }
+}
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private Copy? _copy;
+    private bool _loaded;
+    private bool _confirmingRemoval;
+    private bool _removing;
+
+    private bool _showsBpm;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _copy = await Collection.FindAsync(Id);
+        _loaded = true;
+        _showsBpm = _copy?.Release?.Tracks.Any(track => track.Bpm is not null) ?? false;
+    }
+
+    private async Task Remove()
+    {
+        if (_removing)
+        {
+            return;
+        }
+
+        _removing = true;
+
+        try
+        {
+            await Collection.RemoveAsync(Id);
+            Navigation.NavigateTo("collection");
+        }
+        finally
+        {
+            _removing = false;
+        }
+    }
+
+    private static string Length(TimeSpan? duration) => duration switch
+    {
+        null => string.Empty,
+        { TotalHours: >= 1 } length => length.ToString(@"h\:mm\:ss"),
+        { } length => length.ToString(@"m\:ss"),
+    };
+}

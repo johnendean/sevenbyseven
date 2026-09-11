@@ -53,6 +53,14 @@ Browsers only grant camera access in a secure context, so the live preview works
 page falls back to a file input with `capture="environment"`, which opens the phone's own
 camera app and works anywhere — that is the path to use from your shelves.
 
+## Adding a record
+
+Confirming a match ends the Scan and hands the pressing over to the collection. Its full
+detail — tracklist included — is fetched from Discogs once and cached as a Release, and
+your Copy is recorded against it. Condition, price, where you bought it and where you keep
+it are all optional. Two copies of the same pressing are two records, so adding the same
+release twice is the right way to say you own two.
+
 ## Layout
 
 ```
@@ -63,7 +71,7 @@ src/SevenBySeven.Shared           IModule, the DbContext, schema names
 src/Modules/…Scanning             camera capture and photo intake
 src/Modules/…Identification       barcode decode, sleeve reading, Discogs search
 src/Modules/…Catalogue            Release and Track — cached Discogs data
-src/Modules/…Collection           Copy — the records I own
+src/Modules/…Collection           Copy — the records I own, and the pages for browsing them
 tests/SevenBySeven.Tests          unit tests, plus Aspire integration test support
 ```
 
@@ -76,3 +84,6 @@ carries its own pages.
 ```bash
 dotnet test
 ```
+
+The tests that touch the database run against SQLite in memory rather than Postgres, so
+they enforce real keys, foreign keys and unique indexes without needing a container.

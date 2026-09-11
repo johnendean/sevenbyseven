@@ -13,9 +13,8 @@ public sealed class CollectionModule : IModule
 {
     public string Name => "Collection";
 
-    public void RegisterServices(IServiceCollection services, IConfiguration configuration)
-    {
-    }
+    public void RegisterServices(IServiceCollection services, IConfiguration configuration) =>
+        services.AddScoped<IVinylCollection, VinylCollection>();
 
     public void ConfigureModel(ModelBuilder modelBuilder) =>
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(CollectionModule).Assembly);

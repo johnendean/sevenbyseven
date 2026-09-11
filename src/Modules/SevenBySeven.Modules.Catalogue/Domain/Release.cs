@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations.Schema;
+
 namespace SevenBySeven.Modules.Catalogue.Domain;
 
 /// <summary>
@@ -50,6 +52,21 @@ public sealed class Release
     public DateTimeOffset CachedAt { get; set; } = DateTimeOffset.UtcNow;
 
     public IReadOnlyList<Track> Tracks => _tracks;
+
+    /// <summary>
+    /// The pressing in one line — label, catalogue number, country, year and format.
+    /// This is what tells two Releases of the same album apart, so it is what a listing
+    /// has to show. Unmapped: it is composed from columns, not stored.
+    /// </summary>
+    [NotMapped]
+    public string Pressing => string.Join(" \u00b7 ", new[]
+    {
+        LabelName,
+        CatalogueNumber,
+        Country,
+        Released?.ToString(),
+        FormatDescription,
+    }.Where(part => !string.IsNullOrWhiteSpace(part)));
 
     public void ReplaceTracks(IEnumerable<Track> tracks)
     {

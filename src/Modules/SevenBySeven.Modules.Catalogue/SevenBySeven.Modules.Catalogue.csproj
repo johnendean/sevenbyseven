@@ -19,4 +19,8 @@
     <ProjectReference Include="..\..\SevenBySeven.Shared\SevenBySeven.Shared.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="SevenBySeven.Tests" />
+  </ItemGroup>
+
 </Project>

@@ -2,6 +2,7 @@
 @rendermode InteractiveServer
 @implements IAsyncDisposable
 @inject IJSRuntime JS
+@inject NavigationManager Navigation
 @inject ScanSession Session
 @inject ISleeveIdentifier Identifier
 @inject ILogger<ScanPage> Logger
@@ -26,18 +27,7 @@
         @(scan.Source == CaptureSource.Camera ? "live camera" : "camera app or photo library")
     </p>
 
-    @if (_selected is { } chosen)
-    {
-        <div class="alert alert-success" role="alert">
-            <strong>@chosen.ArtistName &mdash; @chosen.Title</strong>
-            <div>@Describe(chosen)</div>
-        </div>
-        <p class="scan-meta">Adding this to your collection arrives with the Collection slice.</p>
-        <div class="scan-actions">
-            <button class="btn btn-secondary" @onclick="Retake">Scan another</button>
-        </div>
-    }
-    else if (_result is null)
+    @if (_result is null)
     {
         <div class="scan-actions">
             <button class="btn btn-secondary" @onclick="Retake" disabled="@_identifying">Retake</button>
@@ -63,7 +53,7 @@
                         <strong>@candidate.ArtistName &mdash; @candidate.Title</strong>
                         <span>@Describe(candidate)</span>
                     </div>
-                    <button class="btn btn-outline-primary" @onclick="() => Select(candidate)">This one</button>
+                    <button class="btn btn-outline-primary" @onclick="() => Confirm(candidate)">This one</button>
                 </li>
             }
         </ul>
@@ -161,7 +151,6 @@ else
     private ElementReference _fileInput;
     private CameraProbe? _probe;
     private IdentificationResult? _result;
-    private MatchCandidate? _selected;
     private bool _identifying;
     private bool _cameraStarted;
     private string? _error;
@@ -288,7 +277,6 @@ else
         Session.Clear();
         _error = null;
         _result = null;
-        _selected = null;
 
         if (_probe is { HasMediaDevices: true, IsSecureContext: true })
         {
@@ -324,7 +312,15 @@ else
         }
     }
 
-    private void Select(MatchCandidate candidate) => _selected = candidate;
+    /// <summary>
+    /// Confirmation: the Scan ends here, photograph and all, and the chosen pressing is
+    /// handed to the Collection by id. Nothing about the Scan survives the navigation.
+    /// </summary>
+    private void Confirm(MatchCandidate candidate)
+    {
+        Session.Clear();
+        Navigation.NavigateTo($"collection/add/{candidate.DiscogsReleaseId}");
+    }
 
     private static string Describe(MatchCandidate candidate) =>
         string.Join(" \u00b7 ", new[]

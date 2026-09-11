@@ -1,0 +1,50 @@
+.add-meta {
+    color: #6c757d;
+    font-size: 0.875rem;
+    max-width: 32rem;
+}
+
+.add-pressing {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    max-width: 32rem;
+    margin-bottom: 1.5rem;
+}
+
+.add-pressing img {
+    width: 5rem;
+    height: 5rem;
+    object-fit: cover;
+    border-radius: 0.25rem;
+    flex-shrink: 0;
+}
+
+.add-pressing p {
+    margin: 0.15rem 0 0;
+}
+
+.add-form {
+    max-width: 32rem;
+}
+
+.add-field {
+    margin-bottom: 0.85rem;
+}
+
+.add-price {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.add-price input:last-child {
+    max-width: 6rem;
+    text-transform: uppercase;
+}
+
+.add-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin: 1rem 0;
+}

@@ -4,6 +4,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using SevenBySeven.Modules.Catalogue;
 using SevenBySeven.Modules.Identification.Barcodes;
 using SevenBySeven.Modules.Identification.Discogs;
 using SevenBySeven.Modules.Identification.Vision;
@@ -14,7 +15,8 @@ namespace SevenBySeven.Modules.Identification;
 /// <summary>
 /// Turns a photograph into Match Candidates: barcode decode first, then vision
 /// extraction, then a Discogs search on whatever was read. See docs/adr/0002.
-/// Owns no tables and no pages — its whole surface is <see cref="ISleeveIdentifier"/>.
+/// Owns no tables and no pages. It holds the connection to Discogs, so it also
+/// supplies the Catalogue's <see cref="ICatalogueSource"/>.
 /// </summary>
 public sealed class IdentificationModule : IModule
 {
@@ -38,7 +40,10 @@ public sealed class IdentificationModule : IModule
 
         services.AddTransient<DiscogsRateLimitHandler>();
 
-        services.AddHttpClient<IDiscogsCatalogue, DiscogsCatalogue>((provider, http) =>
+        // One configured client behind both contracts: searching for candidates, and
+        // fetching a confirmed pressing in full. Two typed clients would mean two rate
+        // limiters, and so twice the ceiling Discogs actually allows.
+        services.AddHttpClient<DiscogsCatalogue>((provider, http) =>
             {
                 var options = provider.GetRequiredService<IOptions<DiscogsOptions>>().Value;
 
@@ -63,6 +68,9 @@ public sealed class IdentificationModule : IModule
                 }
             })
             .AddHttpMessageHandler<DiscogsRateLimitHandler>();
+
+        services.AddScoped<IDiscogsCatalogue>(provider => provider.GetRequiredService<DiscogsCatalogue>());
+        services.AddScoped<ICatalogueSource>(provider => provider.GetRequiredService<DiscogsCatalogue>());
 
         services.AddSingleton<IBarcodeScanner, ZXingBarcodeScanner>();
         services.AddScoped<ISleeveReader, ClaudeSleeveReader>();

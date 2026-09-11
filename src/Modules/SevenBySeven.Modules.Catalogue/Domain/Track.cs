@@ -14,6 +14,13 @@ public sealed class Track
     /// <summary>Position as printed on the record, such as "A1" or "B2".</summary>
     public required string Position { get; init; }
 
+    /// <summary>
+    /// Where the track sits in the source's tracklist. Position is what is printed and
+    /// does not reliably sort — "A10" comes before "A2" — so running order is kept
+    /// as the source gave it rather than derived.
+    /// </summary>
+    public int Sequence { get; init; }
+
     public required string Title { get; init; }
 
     public TimeSpan? Duration { get; init; }

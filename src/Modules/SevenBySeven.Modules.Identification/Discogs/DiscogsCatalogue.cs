@@ -3,6 +3,8 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using SevenBySeven.Modules.Catalogue;
+using SevenBySeven.Modules.Catalogue.Domain;
 using SevenBySeven.Modules.Identification.Domain;
 
 namespace SevenBySeven.Modules.Identification.Discogs;
@@ -10,7 +12,7 @@ namespace SevenBySeven.Modules.Identification.Discogs;
 internal sealed class DiscogsCatalogue(
     HttpClient http,
     IOptions<DiscogsOptions> options,
-    ILogger<DiscogsCatalogue> logger) : IDiscogsCatalogue
+    ILogger<DiscogsCatalogue> logger) : IDiscogsCatalogue, ICatalogueSource
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
@@ -70,6 +72,66 @@ internal sealed class DiscogsCatalogue(
         }
     }
 
+    public async Task<Release?> FetchAsync(
+        int discogsReleaseId,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(discogsReleaseId);
+
+        if (!_options.IsConfigured)
+        {
+            logger.LogWarning("No Discogs token is configured, so release {DiscogsReleaseId} cannot be fetched.",
+                discogsReleaseId);
+
+            return null;
+        }
+
+        HttpResponseMessage response;
+        try
+        {
+            response = await http.GetAsync($"releases/{discogsReleaseId}", cancellationToken);
+        }
+        catch (HttpRequestException ex)
+        {
+            logger.LogError(ex, "Fetching Discogs release {DiscogsReleaseId} failed.", discogsReleaseId);
+            return null;
+        }
+
+        using (response)
+        {
+            if (response.StatusCode is HttpStatusCode.NotFound)
+            {
+                // The candidate came from Discogs moments ago, so this means the release
+                // was deleted or merged between the search and the confirmation.
+                logger.LogWarning("Discogs no longer has release {DiscogsReleaseId}.", discogsReleaseId);
+                return null;
+            }
+
+            if (!response.IsSuccessStatusCode)
+            {
+                logger.LogError(
+                    "Fetching Discogs release {DiscogsReleaseId} returned {Status}.",
+                    discogsReleaseId,
+                    (int)response.StatusCode);
+
+                return null;
+            }
+
+            DiscogsReleaseDetail? detail;
+            try
+            {
+                detail = await response.Content.ReadFromJsonAsync<DiscogsReleaseDetail>(Json, cancellationToken);
+            }
+            catch (JsonException ex)
+            {
+                logger.LogError(ex, "Discogs release {DiscogsReleaseId} could not be read.", discogsReleaseId);
+                return null;
+            }
+
+            return detail is null or { Id: <= 0 } ? null : DiscogsReleaseMapper.ToRelease(detail);
+        }
+    }
+
     internal static string BuildSearchUri(DiscogsQuery query, int perPage)
     {
         var parameters = new List<KeyValuePair<string, string>>
@@ -112,7 +174,7 @@ internal sealed class DiscogsCatalogue(
         return new MatchCandidate(
             DiscogsReleaseId: result.Id,
             Title: title,
-            ArtistName: artist,
+            ArtistName: DiscogsReleaseMapper.WithoutDisambiguator(artist),
             LabelName: result.Labels?.FirstOrDefault(),
             CatalogueNumber: result.CatalogueNumber,
             Country: result.Country,
@@ -142,5 +204,5 @@ internal sealed class DiscogsCatalogue(
 
     /// <summary>Discogs years arrive as strings and are sometimes blank or partial.</summary>
     internal static int? ParseYear(string? year) =>
-        int.TryParse(year, out var parsed) && parsed > 1850 && parsed < 2200 ? parsed : null;
+        int.TryParse(year, out var parsed) && DiscogsReleaseMapper.IsPlausibleYear(parsed) ? parsed : null;
 }
