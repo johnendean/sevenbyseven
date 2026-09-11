@@ -1,0 +1,384 @@
+@page "/scan"
+@rendermode InteractiveServer
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+@inject NavigationManager Navigation
+@inject ScanSession Session
+@inject ISleeveIdentifier Identifier
+@inject ILogger<ScanPage> Logger
+
+<PageTitle>Scan a record</PageTitle>
+
+<h1>Scan a record</h1>
+
+@if (_error is not null)
+{
+    <div class="alert alert-danger" role="alert">@_error</div>
+}
+
+@if (Session.Current is { } scan)
+{
+    <div class="scan-preview">
+        <img src="@scan.ToDataUrl()" alt="The sleeve you photographed" />
+    </div>
+
+    <p class="scan-meta">
+        @scan.Width &times; @scan.Height &middot; @FormatSize(scan.SizeBytes) &middot;
+        @(scan.Source == CaptureSource.Camera ? "live camera" : "camera app or photo library")
+    </p>
+
+    @if (_result is null)
+    {
+        <div class="scan-actions">
+            <button class="btn btn-secondary" @onclick="Retake" disabled="@_identifying">Retake</button>
+            <button class="btn btn-primary" @onclick="Identify" disabled="@_identifying">
+                @(_identifying ? "Identifying\u2026" : "Identify")
+            </button>
+        </div>
+        <p class="scan-meta">The photograph is held in memory only and is discarded when you leave.</p>
+    }
+    else if (_result.HasCandidates)
+    {
+        <p class="scan-meta">Matched on @RouteDescription(_result.Route). Pick the pressing you are holding.</p>
+
+        <ul class="candidate-list">
+            @foreach (var candidate in _result.Candidates)
+            {
+                <li class="candidate">
+                    @if (!string.IsNullOrWhiteSpace(candidate.ThumbnailUrl))
+                    {
+                        <img src="@candidate.ThumbnailUrl" alt="" loading="lazy" />
+                    }
+                    <div class="candidate-detail">
+                        <strong>@candidate.ArtistName &mdash; @candidate.Title</strong>
+                        <span>@Describe(candidate)</span>
+                    </div>
+                    <button class="btn btn-outline-primary" @onclick="() => Confirm(candidate)">This one</button>
+                </li>
+            }
+        </ul>
+
+        <div class="scan-actions">
+            <button class="btn btn-secondary" @onclick="Retake">None of these</button>
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-warning" role="alert">
+            <strong>No match.</strong>
+            @if (_result.Details.IsEmpty)
+            {
+                <span>Nothing legible was read. Try the centre label, or get closer to the catalogue number.</span>
+            }
+            else
+            {
+                <span>Read @DescribeDetails(_result.Details), but Discogs had nothing matching.</span>
+            }
+        </div>
+        <div class="scan-actions">
+            <button class="btn btn-secondary" @onclick="Retake">Try again</button>
+        </div>
+    }
+}
+else if (_probe is null)
+{
+    <p class="scan-meta">Checking what this browser can do&hellip;</p>
+}
+else
+{
+    @if (_probe.HasMediaDevices && _probe.IsSecureContext)
+    {
+        <div class="scan-stage @(_cameraStarted ? null : "scan-stage-idle")">
+            <video @ref="_video" playsinline muted autoplay></video>
+        </div>
+
+        <div class="scan-actions">
+            @if (_cameraStarted)
+            {
+                <button class="btn btn-primary" @onclick="CaptureFromCamera">Capture</button>
+                <button class="btn btn-secondary" @onclick="StopCamera">Stop camera</button>
+            }
+            else
+            {
+                <button class="btn btn-primary" @onclick="StartCamera">Use camera</button>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-warning" role="alert">
+            <strong>Live camera unavailable.</strong>
+            @if (!_probe.IsSecureContext)
+            {
+                <span>
+                    Browsers only grant camera access in a secure context, so this page needs
+                    to be reached over <code>localhost</code> or trusted HTTPS. Over plain HTTP
+                    from a phone, use the photo button below instead &mdash; it opens the
+                    camera app directly.
+                </span>
+            }
+            else
+            {
+                <span>This browser exposes no camera. Use the photo button below.</span>
+            }
+        </div>
+    }
+
+    <div class="scan-actions">
+        <label class="btn btn-outline-primary">
+            Take or choose a photo
+            <input type="file" accept="image/*" capture="environment"
+                   @ref="_fileInput" @onchange="CaptureFromFile" hidden />
+        </label>
+    </div>
+
+    <p class="scan-meta">
+        Photograph the sleeve or the centre label. A barcode, where there is one, is the
+        surest match; otherwise the catalogue number and label matter most.
+    </p>
+}
+
+@code {
+    private const string ModulePath = "./_content/SevenBySeven.Modules.Scanning/js/camera.js";
+
+    /// <summary>Long edge in pixels. Enough for a catalogue number, small enough to send.</summary>
+    private const int MaxDimension = 1600;
+
+    private const double JpegQuality = 0.85;
+
+    private IJSObjectReference? _camera;
+    private ElementReference _video;
+    private ElementReference _fileInput;
+    private CameraProbe? _probe;
+    private IdentificationResult? _result;
+    private bool _identifying;
+    private bool _cameraStarted;
+    private string? _error;
+
+    protected override void OnInitialized() => Session.Changed += OnSessionChanged;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        try
+        {
+            _camera = await JS.InvokeAsync<IJSObjectReference>("import", ModulePath);
+            _probe = await _camera.InvokeAsync<CameraProbe>("probe");
+        }
+        catch (JSException ex)
+        {
+            Logger.LogError(ex, "Could not load the camera module.");
+            _probe = new CameraProbe(false, false);
+            _error = "The camera module failed to load.";
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task StartCamera()
+    {
+        if (_camera is null)
+        {
+            return;
+        }
+
+        _error = null;
+        try
+        {
+            await _camera.InvokeVoidAsync("start", _video);
+            _cameraStarted = true;
+        }
+        catch (JSException ex)
+        {
+            // Overwhelmingly this is the user declining the permission prompt.
+            Logger.LogWarning(ex, "Camera could not be started.");
+            _error = "The camera could not be started. Check the browser has permission, or use the photo button.";
+        }
+    }
+
+    private async Task StopCamera()
+    {
+        if (_camera is null)
+        {
+            return;
+        }
+
+        await _camera.InvokeVoidAsync("stopStream");
+        _cameraStarted = false;
+    }
+
+    private async Task CaptureFromCamera()
+    {
+        if (_camera is null)
+        {
+            return;
+        }
+
+        var result = await _camera.InvokeAsync<CaptureResult?>("captureFrame", _video, MaxDimension, JpegQuality);
+        if (result is null)
+        {
+            _error = "Nothing was captured. Give the camera a moment to focus and try again.";
+            return;
+        }
+
+        await StopCamera();
+        Accept(result, CaptureSource.Camera);
+    }
+
+    private async Task CaptureFromFile(ChangeEventArgs args)
+    {
+        if (_camera is null)
+        {
+            return;
+        }
+
+        _error = null;
+        try
+        {
+            var result = await _camera.InvokeAsync<CaptureResult?>("captureFile", _fileInput, MaxDimension, JpegQuality);
+            if (result is null)
+            {
+                return;
+            }
+
+            Accept(result, CaptureSource.File);
+        }
+        catch (JSException ex)
+        {
+            Logger.LogWarning(ex, "The chosen file could not be decoded.");
+            _error = "That file could not be read as an image.";
+        }
+        finally
+        {
+            // Let the same file be chosen twice in a row.
+            await _camera.InvokeVoidAsync("clearFile", _fileInput);
+        }
+    }
+
+    private void Accept(CaptureResult result, CaptureSource source)
+    {
+        try
+        {
+            Session.Set(Scan.FromDataUrl(result.DataUrl, result.Width, result.Height, source));
+        }
+        catch (FormatException ex)
+        {
+            Logger.LogError(ex, "The browser returned an unusable data URL.");
+            _error = "The captured image was unreadable.";
+        }
+    }
+
+    private async Task Retake()
+    {
+        Session.Clear();
+        _error = null;
+        _result = null;
+
+        if (_probe is { HasMediaDevices: true, IsSecureContext: true })
+        {
+            // The video element only exists once this re-renders.
+            StateHasChanged();
+            await Task.Yield();
+            await StartCamera();
+        }
+    }
+
+    private async Task Identify()
+    {
+        if (Session.Current is not { } scan || _identifying)
+        {
+            return;
+        }
+
+        _identifying = true;
+        _error = null;
+
+        try
+        {
+            _result = await Identifier.IdentifyAsync(scan.Image, scan.ContentType);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Identification failed.");
+            _error = "Identification failed. The Discogs or Anthropic call may not be configured.";
+        }
+        finally
+        {
+            _identifying = false;
+        }
+    }
+
+    /// <summary>
+    /// Confirmation: the Scan ends here, photograph and all, and the chosen pressing is
+    /// handed to the Collection by id. Nothing about the Scan survives the navigation.
+    /// </summary>
+    private void Confirm(MatchCandidate candidate)
+    {
+        Session.Clear();
+        Navigation.NavigateTo($"collection/add/{candidate.DiscogsReleaseId}");
+    }
+
+    private static string Describe(MatchCandidate candidate) =>
+        string.Join(" \u00b7 ", new[]
+        {
+            candidate.LabelName,
+            candidate.CatalogueNumber,
+            candidate.Country,
+            candidate.Year?.ToString(),
+            candidate.FormatDescription,
+        }.Where(part => !string.IsNullOrWhiteSpace(part)));
+
+    private static string DescribeDetails(SleeveDetails details) =>
+        string.Join(", ", new[]
+        {
+            details.ArtistName,
+            details.Title,
+            details.CatalogueNumber,
+            details.Barcode,
+        }.Where(part => !string.IsNullOrWhiteSpace(part)));
+
+    private static string RouteDescription(IdentificationRoute route) => route switch
+    {
+        IdentificationRoute.Barcode => "the barcode",
+        IdentificationRoute.CatalogueNumber => "the catalogue number",
+        IdentificationRoute.ArtistAndTitle => "artist and title",
+        _ => "nothing in particular",
+    };
+
+    private void OnSessionChanged() => InvokeAsync(StateHasChanged);
+
+    private static string FormatSize(int bytes) => bytes switch
+    {
+        < 1024 => $"{bytes} B",
+        < 1024 * 1024 => $"{bytes / 1024.0:0.#} kB",
+        _ => $"{bytes / (1024.0 * 1024.0):0.##} MB",
+    };
+
+    public async ValueTask DisposeAsync()
+    {
+        Session.Changed -= OnSessionChanged;
+
+        if (_camera is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await _camera.InvokeVoidAsync("stopStream");
+            await _camera.DisposeAsync();
+        }
+        catch (JSDisconnectedException)
+        {
+            // The circuit is already gone; nothing to clean up browser-side.
+        }
+    }
+
+    private sealed record CameraProbe(bool HasMediaDevices, bool IsSecureContext);
+
+    private sealed record CaptureResult(string DataUrl, int Width, int Height);
+}

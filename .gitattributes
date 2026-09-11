@@ -1,0 +1,9 @@
+# Normalise line endings; the .NET templates emit CRLF.
+* text=auto eol=lf
+
+# Binary assets
+*.png binary
+*.jpg binary
+*.ico binary
+*.woff binary
+*.woff2 binary

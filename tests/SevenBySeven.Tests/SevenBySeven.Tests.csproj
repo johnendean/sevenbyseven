@@ -1,0 +1,34 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.Testing" />
+    <PackageReference Include="coverlet.collector" />
+    <!-- A real relational provider, so the tests meet the same keys, foreign keys and
+         unique indexes Postgres enforces, without needing a container to run them. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\SevenBySeven.AppHost\SevenBySeven.AppHost.csproj" />
+    <ProjectReference Include="..\..\src\SevenBySeven.Shared\SevenBySeven.Shared.csproj" />
+    <ProjectReference Include="..\..\src\Modules\SevenBySeven.Modules.Identification\SevenBySeven.Modules.Identification.csproj" />
+    <ProjectReference Include="..\..\src\Modules\SevenBySeven.Modules.Scanning\SevenBySeven.Modules.Scanning.csproj" />
+    <ProjectReference Include="..\..\src\Modules\SevenBySeven.Modules.Catalogue\SevenBySeven.Modules.Catalogue.csproj" />
+    <ProjectReference Include="..\..\src\Modules\SevenBySeven.Modules.Collection\SevenBySeven.Modules.Collection.csproj" />
+  </ItemGroup>
+
+</Project>

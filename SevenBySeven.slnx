@@ -1,0 +1,17 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/SevenBySeven.AppHost/SevenBySeven.AppHost.csproj" />
+    <Project Path="src/SevenBySeven.ServiceDefaults/SevenBySeven.ServiceDefaults.csproj" />
+    <Project Path="src/SevenBySeven.Shared/SevenBySeven.Shared.csproj" />
+    <Project Path="src/SevenBySeven.Web/SevenBySeven.Web.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/">
+    <Project Path="src/Modules/SevenBySeven.Modules.Catalogue/SevenBySeven.Modules.Catalogue.csproj" />
+    <Project Path="src/Modules/SevenBySeven.Modules.Collection/SevenBySeven.Modules.Collection.csproj" />
+    <Project Path="src/Modules/SevenBySeven.Modules.Identification/SevenBySeven.Modules.Identification.csproj" />
+    <Project Path="src/Modules/SevenBySeven.Modules.Scanning/SevenBySeven.Modules.Scanning.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/SevenBySeven.Tests/SevenBySeven.Tests.csproj" />
+  </Folder>
+</Solution>

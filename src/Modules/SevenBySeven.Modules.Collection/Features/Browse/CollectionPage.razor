@@ -1,0 +1,62 @@
+@page "/collection"
+@inject IVinylCollection Collection
+
+<PageTitle>My collection</PageTitle>
+
+<h1>My collection</h1>
+
+@if (_copies is null)
+{
+    <p class="collection-meta">Reading the shelves&hellip;</p>
+}
+else if (_copies.Count == 0)
+{
+    <p>Nothing here yet.</p>
+    <p class="collection-meta">
+        Photograph a sleeve or centre label and the record is identified against Discogs,
+        then added here once you confirm which pressing it is.
+    </p>
+    <p><a class="btn btn-primary" href="scan">Scan a record</a></p>
+}
+else
+{
+    <p class="collection-meta">@Counted(_copies.Count)</p>
+
+    <ul class="copy-list">
+        @foreach (var copy in _copies)
+        {
+            <li class="copy">
+                <a class="copy-link" href="collection/@copy.Id">
+                    @if (copy.Release?.ThumbnailUrl is { Length: > 0 } thumbnail)
+                    {
+                        <img src="@thumbnail" alt="" loading="lazy" />
+                    }
+                    else
+                    {
+                        <span class="copy-sleeve-missing" aria-hidden="true"></span>
+                    }
+
+                    <span class="copy-detail">
+                        <strong>@copy.Release?.ArtistName &mdash; @copy.Release?.Title</strong>
+                        <span>@copy.Release?.Pressing</span>
+                    </span>
+                </a>
+
+                @if (copy.MediaCondition is { } grade)
+                {
+                    <span class="copy-grade" title="@($"Media: {grade.Describe()}")">@grade.Abbreviation()</span>
+                }
+            </li>
+        }
+    </ul>
+
+    <p><a class="btn btn-primary" href="scan">Scan another</a></p>
+}
+
+@code {
+    private IReadOnlyList<Copy>? _copies;
+
+    protected override async Task OnInitializedAsync() => _copies = await Collection.ListAsync();
+
+    private static string Counted(int count) => count == 1 ? "1 record" : $"{count} records";
+}

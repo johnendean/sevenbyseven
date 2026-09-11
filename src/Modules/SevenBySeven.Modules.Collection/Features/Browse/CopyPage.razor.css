@@ -1,0 +1,71 @@
+.copy-meta {
+    color: #6c757d;
+    font-size: 0.875rem;
+}
+
+.copy-layout {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    align-items: flex-start;
+}
+
+.copy-sleeve {
+    flex: 0 0 auto;
+    max-width: 18rem;
+}
+
+.copy-sleeve img {
+    width: 100%;
+    height: auto;
+    border-radius: 0.5rem;
+    display: block;
+}
+
+.copy-facts {
+    flex: 1 1 18rem;
+    min-width: 0;
+}
+
+.copy-facts h2 {
+    font-size: 1.1rem;
+    margin-top: 0;
+}
+
+.copy-facts h2 ~ h2 {
+    margin-top: 1.5rem;
+}
+
+.copy-facts dl {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.25rem 1rem;
+    margin: 0;
+}
+
+.copy-facts dt {
+    color: #6c757d;
+    font-weight: 400;
+    font-size: 0.875rem;
+}
+
+.copy-facts dd {
+    margin: 0;
+}
+
+.copy-tracks {
+    max-width: 40rem;
+}
+
+.copy-tracks td:first-child,
+.copy-tracks th:first-child {
+    width: 6rem;
+}
+
+.copy-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 1.5rem 0 0.5rem;
+}
