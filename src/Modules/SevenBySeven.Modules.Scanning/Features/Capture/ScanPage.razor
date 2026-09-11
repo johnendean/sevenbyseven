@@ -333,6 +333,13 @@ else
         {
             _result = await Identifier.IdentifyAsync(scan.Image, scan.ContentType);
         }
+        catch (SleeveReadException ex)
+        {
+            // Say what actually went wrong. Reporting a failed call as an unreadable
+            // photograph sends you back to the shelf to re-photograph a blameless record.
+            Logger.LogError(ex, "The sleeve could not be read.");
+            _error = ex.Message;
+        }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Identification failed.");

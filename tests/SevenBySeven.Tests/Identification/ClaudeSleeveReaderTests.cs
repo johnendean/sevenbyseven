@@ -1,3 +1,7 @@
+using Anthropic;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+using SevenBySeven.Modules.Identification;
 using SevenBySeven.Modules.Identification.Vision;
 
 namespace SevenBySeven.Tests.Identification;
@@ -58,4 +62,18 @@ public class ClaudeSleeveReaderTests
     [Fact]
     public void Parse_trims_whitespace_the_model_left_behind() =>
         Assert.Equal("BLP 4003", ClaudeSleeveReader.Parse("""{"catalogueNumber": "  BLP 4003  "}""").CatalogueNumber);
+
+    [Fact]
+    public async Task An_unconfigured_key_is_reported_rather_than_read_as_an_illegible_sleeve()
+    {
+        var reader = new ClaudeSleeveReader(
+            new AnthropicClient(),
+            Options.Create(new IdentificationOptions { AnthropicApiKey = null }),
+            NullLogger<ClaudeSleeveReader>.Instance);
+
+        var thrown = await Assert.ThrowsAsync<SleeveReadException>(
+            () => reader.ReadAsync(new byte[] { 1, 2, 3 }, "image/jpeg"));
+
+        Assert.Contains("API key", thrown.Message);
+    }
 }
