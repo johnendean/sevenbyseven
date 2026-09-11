@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <ItemGroup>
     <ProjectReference Include="..\SevenBySeven.ServiceDefaults\SevenBySeven.ServiceDefaults.csproj" />
@@ -20,6 +20,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
+    <UserSecretsId>f2d3bf17-15e7-44ca-93e5-1e606a6d2ac8</UserSecretsId>
   </PropertyGroup>
 
 </Project>

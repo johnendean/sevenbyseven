@@ -12,11 +12,21 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Anthropic" />
     <PackageReference Include="Microsoft.AspNetCore.Components.Web" />
+    <PackageReference Include="Microsoft.Extensions.Http" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
+    <PackageReference Include="SixLabors.ImageSharp" />
+    <PackageReference Include="System.Threading.RateLimiting" />
+    <PackageReference Include="ZXing.Net" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\SevenBySeven.Shared\SevenBySeven.Shared.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="SevenBySeven.Tests" />
   </ItemGroup>
 
 </Project>

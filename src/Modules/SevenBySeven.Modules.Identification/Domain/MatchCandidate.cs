@@ -13,4 +13,5 @@ public sealed record MatchCandidate(
     string? Country,
     int? Year,
     string? FormatDescription,
-    string? ThumbnailUrl);
+    string? ThumbnailUrl,
+    int? DiscogsMasterId);
