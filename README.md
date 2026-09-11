@@ -28,6 +28,15 @@ Without them the app still runs: identification degrades rather than failing. Wi
 Anthropic key only the barcode path can identify a record; with no Discogs token no
 search happens at all.
 
+## A note on the build warning
+
+Builds emit `No Six Labors license found`. This is expected and deliberate: ImageSharp
+is used to decode captured photographs for barcode reading, and Six Labors moved to a
+licence-key model at version 3. Their licence is free for individuals and hobby
+projects, which this is. To silence the warning, register at
+<https://sixlabors.com/pricing/> and set `$(SixLaborsLicenseKey)` or drop a
+`sixlabors.lic` in the workspace.
+
 ## Running
 
 ```bash
