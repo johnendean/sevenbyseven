@@ -43,20 +43,20 @@ jobs:
       - name: Restore
         run: dotnet restore
 
-      # Debug, not Release. ImageSharp's licence check is a warning in Debug but a hard
-      # error in Release (ContinueOnError is tied to the configuration name in their
-      # targets), and this project deliberately runs unlicensed — see README. Switching
-      # to Release means registering for the free licence and passing the key in as a
-      # secret; until then Release cannot build at all, here or locally.
+      # Release, which ImageSharp's licence check treats as a hard error rather than a
+      # warning, so the key has to be present for the build to run at all. A pull request
+      # opened from a fork cannot read the secret and will fail here.
       - name: Build
-        run: dotnet build --no-restore --configuration Debug
+        env:
+          SixLaborsLicenseKey: ${{ secrets.SIXLABORS_LICENSE_KEY }}
+        run: dotnet build --no-restore --configuration Release
 
       # The tests use SQLite in memory, so no container runtime and no credentials.
       - name: Test
         run: >
           dotnet test
           --no-build
-          --configuration Debug
+          --configuration Release
           --logger "trx;LogFileName=test-results.trx"
           --logger "console;verbosity=normal"
           --results-directory TestResults

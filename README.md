@@ -30,14 +30,19 @@ Without them the app still runs: identification degrades rather than failing. Wi
 Anthropic key only the barcode path can identify a record; with no Discogs token no
 search happens at all.
 
-## A note on the build warning
+## The Six Labors licence
 
-Builds emit `No Six Labors license found`. This is expected and deliberate: ImageSharp
-is used to decode captured photographs for barcode reading, and Six Labors moved to a
-licence-key model at version 3. Their licence is free for individuals and hobby
-projects, which this is. To silence the warning, register at
-<https://sixlabors.com/pricing/> and set `$(SixLaborsLicenseKey)` or drop a
-`sixlabors.lic` in the workspace.
+ImageSharp decodes captured photographs for barcode reading, and Six Labors moved to a
+licence-key model at version 3. Their Community licence is free for individuals and hobby
+projects, which this is; register for one at <https://sixlabors.com/pricing/>.
+
+The key is a credential, so it is not in the repository. Put your own `sixlabors.lic` at
+the repository root and `Directory.Build.props` points every project at it — ImageSharp
+only looks alongside the project being built, so the root copy needs that nudge.
+Alternatively set `$(SixLaborsLicenseKey)` to the contents of the file, which takes
+precedence; that is how CI supplies it, from the `SIXLABORS_LICENSE_KEY` secret.
+
+Without a key, Debug builds warn and Release builds fail outright.
 
 ## Running
 

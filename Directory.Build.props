@@ -1,0 +1,10 @@
+<Project>
+  <PropertyGroup Label="Six Labors licensing">
+    <!-- ImageSharp's licence check globs **/sixlabors.lic relative to the project being
+         built, so a key at the repository root is invisible to projects under src/.
+         Point every project at the root copy instead. The key itself is a credential and
+         is git-ignored; CI supplies it as $(SixLaborsLicenseKey) from a secret, which
+         takes precedence over this file. -->
+    <SixLaborsLicenseFile Condition="'$(SixLaborsLicenseKey)' == '' AND Exists('$(MSBuildThisFileDirectory)sixlabors.lic')">$(MSBuildThisFileDirectory)sixlabors.lic</SixLaborsLicenseFile>
+  </PropertyGroup>
+</Project>
