@@ -1,5 +1,7 @@
 # Seven by Seven
 
+[![CI](https://github.com/johnendean/sevenbyseven/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/johnendean/sevenbyseven/actions/workflows/ci.yml?query=branch%3Amain)
+
 A catalogue of the vinyl records I own. Photograph a sleeve or centre label, and the
 record is identified against Discogs and added to the collection once you confirm which
 pressing it is.
