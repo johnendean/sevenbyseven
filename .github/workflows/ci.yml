@@ -1,0 +1,71 @@
+name: CI
+
+# Every pull request into main must pass this before it is merged, and main itself is
+# re-checked after the merge in case two green PRs conflict semantically.
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+# A second push to the same branch makes the first run irrelevant.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    name: Build and test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out
+        uses: actions/checkout@v5
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      # Central package management means Directory.Packages.props holds every version,
+      # so it plus the project files decide what a restore would download.
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('Directory.Packages.props', '**/*.csproj', 'dotnet-tools.json') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - name: Restore
+        run: dotnet restore
+
+      # Debug, not Release. ImageSharp's licence check is a warning in Debug but a hard
+      # error in Release (ContinueOnError is tied to the configuration name in their
+      # targets), and this project deliberately runs unlicensed — see README. Switching
+      # to Release means registering for the free licence and passing the key in as a
+      # secret; until then Release cannot build at all, here or locally.
+      - name: Build
+        run: dotnet build --no-restore --configuration Debug
+
+      # The tests use SQLite in memory, so no container runtime and no credentials.
+      - name: Test
+        run: >
+          dotnet test
+          --no-build
+          --configuration Debug
+          --logger "trx;LogFileName=test-results.trx"
+          --logger "console;verbosity=normal"
+          --results-directory TestResults
+          --collect "XPlat Code Coverage"
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: TestResults
+          retention-days: 14
