@@ -483,3 +483,6 @@ $RECYCLE.BIN/
 
 # Claude Code local settings
 .claude/settings.local.json
+
+# The Six Labors licence key is a credential, not source.
+sixlabors.lic
