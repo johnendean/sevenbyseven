@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="XPlat code coverage">
+        <Configuration>
+          <Format>cobertura</Format>
+          <!-- Aspire orchestration: a dozen lines that only mean anything once the real
+               containers are up, so there is nothing here a unit test could reach. -->
+          <Exclude>[SevenBySeven.AppHost]*</Exclude>
+          <!-- EF writes the migrations and the model snapshot, and they outnumber the
+               code by some margin. Counting them buries the figure that matters: a new
+               migration would drop the percentage without anything being less tested. -->
+          <ExcludeByFile>**/Migrations/*.cs</ExcludeByFile>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>

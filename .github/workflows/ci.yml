@@ -57,6 +57,7 @@ jobs:
           dotnet test
           --no-build
           --configuration Release
+          --settings coverlet.runsettings
           --logger "trx;LogFileName=test-results.trx"
           --logger "console;verbosity=normal"
           --results-directory TestResults
@@ -69,3 +70,14 @@ jobs:
           name: test-results
           path: TestResults
           retention-days: 14
+
+      # Updates the README badge from main and comments the change on a pull request.
+      # github.token is enough for a public repository, so there is no Coveralls secret
+      # to keep. Reporting coverage is not what the merge gate is for, so an outage at
+      # their end leaves the run green rather than blocking the branch.
+      - name: Report coverage
+        uses: coverallsapp/github-action@v2
+        with:
+          format: cobertura
+          base-path: .
+          fail-on-error: false
