@@ -71,18 +71,20 @@ jobs:
           path: TestResults
           retention-days: 14
 
-      # Coverlet writes the report into a folder named for a GUID, so the path can only
-      # be a glob, and a glob that stops matching would leave the upload below silently
-      # empty. Fail here instead: a report we did not produce is our problem, where a bad
-      # day at Coveralls is not.
-      - name: Check the coverage report was written
-        run: ls TestResults/*/coverage.cobertura.xml
+      # The merge gate. Below the threshold the branch does not land, and a report we
+      # failed to produce fails here too — a missing report is our problem, where a bad
+      # day at Coveralls is not. The same script runs locally, so a red gate here is
+      # reproducible before you push.
+      - name: Check coverage meets the threshold
+        run: ./scripts/check-coverage.sh
 
       # Updates the README badge from main and comments the change on a pull request.
       # github.token is enough for a public repository, so there is no Coveralls secret
       # to keep. Reporting coverage is not what the merge gate is for, so an outage at
-      # their end leaves the run green rather than blocking the branch.
+      # their end leaves the run green rather than blocking the branch — and it still
+      # runs when the gate above goes red, which is exactly when the number is wanted.
       - name: Report coverage
+        if: always()
         uses: coverallsapp/github-action@v2
         with:
           file: TestResults/*/coverage.cobertura.xml

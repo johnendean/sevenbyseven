@@ -96,9 +96,24 @@ dotnet test
 The tests that touch the database run against SQLite in memory rather than Postgres, so
 they enforce real keys, foreign keys and unique indexes without needing a container.
 
-Coverage is collected on every run and reported to Coveralls, which draws the badge above
-and comments on a pull request with the change the branch would make.
-`coverlet.runsettings` keeps two things out of the figure: the Aspire AppHost, which no
-unit test can reach, and the EF migrations and model snapshot, which are generated. Both
-would otherwise count as untested code — the migrations alone outnumber everything else —
-and adding a migration would drop the percentage without anything being less tested.
+Coverage is collected on every run. A branch below 80% line coverage does not merge:
+
+```bash
+dotnet test --settings coverlet.runsettings --collect "XPlat Code Coverage" \
+  --results-directory TestResults
+./scripts/check-coverage.sh
+```
+
+CI runs exactly that, so a red gate is reproducible before you push. Pass a different bar
+with `COVERAGE_THRESHOLD=85 ./scripts/check-coverage.sh` when you want to see how far a
+branch is from one.
+
+`coverlet.runsettings` decides what the figure is measured over. Out of it are the Aspire
+AppHost, the web host and ServiceDefaults, which are orchestration and composition no unit
+test reaches; the EF migrations and model snapshot, which are generated and outnumber the
+code by some margin; and the Razor components, whose counted lines are the generated
+render tree rather than behaviour — see [ADR 0004](./docs/adr/0004-coverage-is-measured-without-razor-components.md).
+Logic worth testing is lifted out of a page into its module instead, as `Scan.FromJpeg` is.
+
+Coveralls draws the badge above and comments on a pull request with the change the branch
+would make. It reports rather than gates, so an outage at their end leaves the run green.

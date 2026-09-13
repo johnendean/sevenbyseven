@@ -5,13 +5,28 @@
       <DataCollector friendlyName="XPlat code coverage">
         <Configuration>
           <Format>cobertura</Format>
-          <!-- Aspire orchestration: a dozen lines that only mean anything once the real
-               containers are up, so there is nothing here a unit test could reach. -->
-          <Exclude>[SevenBySeven.AppHost]*</Exclude>
+          <!-- What the 80% gate is measured over. Everything named here is deliberately
+               outside the figure; anything not named is in it, tested or not.
+
+               Aspire orchestration: a dozen lines that only mean anything once the real
+               containers are up, so there is nothing here a unit test could reach.
+
+               The host and ServiceDefaults are composition and unmodified Aspire
+               template code — the same argument. They are named rather than left out
+               by accident: neither is referenced by the test project today, so coverlet
+               never loads them, and a single ProjectReference added later would drop
+               180 uncovered lines into the figure without anything being less tested. -->
+          <Exclude>[SevenBySeven.AppHost]*,[SevenBySeven.Web]*,[SevenBySeven.ServiceDefaults]*</Exclude>
           <!-- EF writes the migrations and the model snapshot, and they outnumber the
                code by some margin. Counting them buries the figure that matters: a new
-               migration would drop the percentage without anything being less tested. -->
-          <ExcludeByFile>**/Migrations/*.cs</ExcludeByFile>
+               migration would drop the percentage without anything being less tested.
+
+               Razor components are markup with a tail of code. Coverlet counts the
+               generated render tree, so their percentage measures how much HTML a test
+               rendered rather than whether anything behaves correctly — see
+               docs/adr/0004. Logic worth testing is lifted out into the module instead,
+               as Scan.FromJpeg already is. -->
+          <ExcludeByFile>**/Migrations/*.cs,**/*.razor</ExcludeByFile>
         </Configuration>
       </DataCollector>
     </DataCollectors>
