@@ -87,5 +87,8 @@ jobs:
         with:
           file: TestResults/*/coverage.cobertura.xml
           format: cobertura
-          base-path: .
+          # Coverlet writes filenames relative to <sources>, which is src/, not the
+          # repository root. Point Coveralls at the same place or it resolves none of
+          # them and reports on a subset it pieced together.
+          base-path: src
           fail-on-error: false
