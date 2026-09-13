@@ -57,6 +57,7 @@ jobs:
           dotnet test
           --no-build
           --configuration Release
+          --settings coverlet.runsettings
           --logger "trx;LogFileName=test-results.trx"
           --logger "console;verbosity=normal"
           --results-directory TestResults
@@ -69,3 +70,25 @@ jobs:
           name: test-results
           path: TestResults
           retention-days: 14
+
+      # Coverlet writes the report into a folder named for a GUID, so the path can only
+      # be a glob, and a glob that stops matching would leave the upload below silently
+      # empty. Fail here instead: a report we did not produce is our problem, where a bad
+      # day at Coveralls is not.
+      - name: Check the coverage report was written
+        run: ls TestResults/*/coverage.cobertura.xml
+
+      # Updates the README badge from main and comments the change on a pull request.
+      # github.token is enough for a public repository, so there is no Coveralls secret
+      # to keep. Reporting coverage is not what the merge gate is for, so an outage at
+      # their end leaves the run green rather than blocking the branch.
+      - name: Report coverage
+        uses: coverallsapp/github-action@v2
+        with:
+          file: TestResults/*/coverage.cobertura.xml
+          format: cobertura
+          # Coverlet writes filenames relative to <sources>, which is src/, not the
+          # repository root. Point Coveralls at the same place or it resolves none of
+          # them and reports on a subset it pieced together.
+          base-path: src
+          fail-on-error: false

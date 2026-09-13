@@ -1,6 +1,7 @@
 # Seven by Seven
 
 [![CI](https://github.com/johnendean/sevenbyseven/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/johnendean/sevenbyseven/actions/workflows/ci.yml?query=branch%3Amain)
+[![Coverage](https://coveralls.io/repos/github/johnendean/sevenbyseven/badge.svg?branch=main)](https://coveralls.io/github/johnendean/sevenbyseven?branch=main)
 
 A catalogue of the vinyl records I own. Photograph a sleeve or centre label, and the
 record is identified against Discogs and added to the collection once you confirm which
@@ -94,3 +95,10 @@ dotnet test
 
 The tests that touch the database run against SQLite in memory rather than Postgres, so
 they enforce real keys, foreign keys and unique indexes without needing a container.
+
+Coverage is collected on every run and reported to Coveralls, which draws the badge above
+and comments on a pull request with the change the branch would make.
+`coverlet.runsettings` keeps two things out of the figure: the Aspire AppHost, which no
+unit test can reach, and the EF migrations and model snapshot, which are generated. Both
+would otherwise count as untested code — the migrations alone outnumber everything else —
+and adding a migration would drop the percentage without anything being less tested.
