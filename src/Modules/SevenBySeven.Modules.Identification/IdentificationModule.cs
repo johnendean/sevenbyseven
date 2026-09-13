@@ -1,4 +1,5 @@
 using Anthropic;
+using Anthropic.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -37,6 +38,11 @@ public sealed class IdentificationModule : IModule
                 ? new AnthropicClient { ApiKey = options.AnthropicApiKey }
                 : new AnthropicClient();
         });
+
+        // The sleeve reader wants only the message service, so hand it that rather than
+        // the whole client — see ClaudeSleeveReader.
+        services.AddSingleton<IMessageService>(
+            provider => provider.GetRequiredService<AnthropicClient>().Messages);
 
         services.AddTransient<DiscogsRateLimitHandler>();
 

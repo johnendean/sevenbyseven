@@ -1,14 +1,17 @@
 using System.Text.Json;
-using Anthropic;
 using Anthropic.Models.Messages;
+using Anthropic.Services;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SevenBySeven.Modules.Identification.Domain;
 
 namespace SevenBySeven.Modules.Identification.Vision;
 
+// Depends on the SDK's message service rather than the whole AnthropicClient: it is the
+// one call this makes, and it is an interface, so a test can stand in for it without
+// pinning us to the shape of the request the SDK puts on the wire.
 internal sealed class ClaudeSleeveReader(
-    AnthropicClient client,
+    IMessageService messages,
     IOptions<IdentificationOptions> options,
     ILogger<ClaudeSleeveReader> logger) : ISleeveReader
 {
@@ -48,7 +51,7 @@ internal sealed class ClaudeSleeveReader(
 
         try
         {
-            var response = await client.Messages.Create(
+            var response = await messages.Create(
                 new MessageCreateParams
                 {
                     Model = _options.Model,
