@@ -1,0 +1,32 @@
+@implements IDisposable
+@inject StackSession Session
+
+@if (Session.Current is { IsEmpty: false } stack && !stack.IsComplete)
+{
+    <a class="stack-indicator" href="stack">
+        <span class="stack-indicator-dot" aria-hidden="true"></span>
+        Stack in progress &mdash; @Describe(stack)
+    </a>
+}
+
+@code {
+    // A Stack lives in the circuit and nowhere else, so one left half-finished is
+    // invisible the moment you navigate off the page. Invisible state you cannot see is
+    // how you end up rescanning a pile you already did.
+
+    protected override void OnInitialized() => Session.Changed += OnChanged;
+
+    private static string Describe(Domain.Stack stack) =>
+        stack.PendingCount switch
+        {
+            0 => $"{Counted(stack.Count)} captured",
+            var pending when pending == stack.Count => $"{Counted(pending)} to confirm",
+            var pending => $"{Counted(pending)} of {stack.Count} still to confirm",
+        };
+
+    private static string Counted(int count) => count == 1 ? "1 record" : $"{count} records";
+
+    private void OnChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Session.Changed -= OnChanged;
+}

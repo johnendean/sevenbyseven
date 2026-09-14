@@ -1,0 +1,201 @@
+.stack-stage {
+    position: relative;
+    background: #111;
+    border-radius: 0.5rem;
+    overflow: hidden;
+    aspect-ratio: 1 / 1;
+    max-width: 32rem;
+}
+
+.stack-stage video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+/* The shutter cue. It is the only feedback that works while you are looking at the
+   record in your hand rather than at the screen. */
+.stack-stage::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: #fff;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.stack-stage.flash::after {
+    opacity: 0.85;
+}
+
+.stack-box {
+    position: absolute;
+    border: 3px solid #ffc107;
+    border-radius: 0.2rem;
+    pointer-events: none;
+    display: none;
+}
+
+/* Green means it would fire if you held it there. */
+.stack-box.locked {
+    border-color: #198754;
+}
+
+.stack-badge {
+    position: absolute;
+    left: 0.75rem;
+    bottom: 0.75rem;
+    right: 0.75rem;
+    background: rgba(0, 0, 0, 0.72);
+    color: #fff;
+    padding: 0.4rem 0.7rem;
+    border-radius: 0.25rem;
+    font-size: 0.8125rem;
+}
+
+.stack-count {
+    position: absolute;
+    right: 0.75rem;
+    top: 0.75rem;
+    background: rgba(0, 0, 0, 0.72);
+    color: #fff;
+    padding: 0.35rem 0.7rem;
+    border-radius: 0.25rem;
+    font-size: 0.8125rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.stack-shots {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 0.75rem;
+    max-width: 32rem;
+}
+
+.stack-shots img {
+    width: 3.5rem;
+    height: 3.5rem;
+    object-fit: cover;
+    border-radius: 0.25rem;
+}
+
+.stack-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin: 1rem 0;
+    max-width: 32rem;
+}
+
+.stack-meta {
+    color: #6c757d;
+    font-size: 0.875rem;
+    max-width: 32rem;
+}
+
+.stack-defaults {
+    max-width: 32rem;
+    padding: 1rem;
+    border: 1px solid #dee2e6;
+    border-radius: 0.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.stack-defaults h2 {
+    font-size: 1rem;
+    margin-bottom: 0.25rem;
+}
+
+.stack-default-fields {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.stack-default-fields > div {
+    flex: 1 1 12rem;
+}
+
+.stack-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    max-width: 32rem;
+}
+
+.stack-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.9rem 0;
+    border-bottom: 1px solid #dee2e6;
+}
+
+/* Dealt with, but still listed: a record that quietly vanished from the pile would
+   be a record you never notice you failed to add. */
+.stack-item.resolved {
+    opacity: 0.55;
+}
+
+.stack-item > img {
+    width: 4.5rem;
+    height: 4.5rem;
+    object-fit: cover;
+    border-radius: 0.25rem;
+    flex-shrink: 0;
+}
+
+.stack-item-body {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.stack-abandon {
+    flex-shrink: 0;
+    padding: 0;
+    font-size: 0.8125rem;
+}
+
+.stack-done {
+    color: #198754;
+}
+
+.stack-failed {
+    color: #b02a37;
+}
+
+.candidate-list {
+    list-style: none;
+    padding: 0;
+    margin: 0.5rem 0 0;
+}
+
+.candidate {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0;
+    border-top: 1px solid #f1f3f5;
+}
+
+.candidate img {
+    width: 3rem;
+    height: 3rem;
+    object-fit: cover;
+    border-radius: 0.25rem;
+    flex-shrink: 0;
+}
+
+.candidate-detail {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.candidate-detail span {
+    color: #6c757d;
+    font-size: 0.8125rem;
+}

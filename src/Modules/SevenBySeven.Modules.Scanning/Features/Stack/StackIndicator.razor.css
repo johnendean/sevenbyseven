@@ -1,0 +1,25 @@
+.stack-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    background: #fff3cd;
+    border: 1px solid #ffe69c;
+    color: #664d03;
+    border-radius: 2rem;
+    padding: 0.25rem 0.85rem;
+    font-size: 0.8125rem;
+    text-decoration: none;
+}
+
+.stack-indicator:hover {
+    background: #ffe69c;
+    color: #664d03;
+}
+
+.stack-indicator-dot {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background: #fd7e14;
+    flex-shrink: 0;
+}

@@ -178,41 +178,4 @@ else
             _adding = false;
         }
     }
-
-    /// <summary>
-    /// The form's own shape. Bound fields need setters and the lengths the database
-    /// will accept, neither of which belongs on <see cref="CopyDetails"/>.
-    /// </summary>
-    private sealed class CopyForm
-    {
-        public ConditionGrade? MediaCondition { get; set; }
-
-        public ConditionGrade? SleeveCondition { get; set; }
-
-        [Range(0, 1_000_000, ErrorMessage = "A price cannot be negative.")]
-        public decimal? PricePaid { get; set; }
-
-        [StringLength(3, MinimumLength = 3, ErrorMessage = "A currency is three letters, such as GBP.")]
-        public string? Currency { get; set; } = "GBP";
-
-        [StringLength(200)]
-        public string? PurchasedFrom { get; set; }
-
-        [StringLength(200)]
-        public string? Location { get; set; }
-
-        [StringLength(4000)]
-        public string? Notes { get; set; }
-
-        public CopyDetails ToDetails() => new()
-        {
-            MediaCondition = MediaCondition,
-            SleeveCondition = SleeveCondition,
-            PricePaid = PricePaid,
-            PricePaidCurrency = Currency,
-            PurchasedFrom = PurchasedFrom,
-            Location = Location,
-            Notes = Notes,
-        };
-    }
 }
