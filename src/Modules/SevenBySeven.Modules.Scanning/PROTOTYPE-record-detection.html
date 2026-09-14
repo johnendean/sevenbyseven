@@ -1,0 +1,568 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PROTOTYPE — record detection</title>
+<style>
+  :root{
+    --ink:#1a1715; --muted:#6f6560; --line:#e2dcd6; --bg:#faf7f4;
+    --panel:#fff; --accent:#c2410c; --good:#15803d; --bad:#b91c1c;
+    --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,sans-serif}
+  .wrap{max-width:1100px;margin:0 auto;padding:32px 20px 72px}
+  h1{font-size:24px;margin:0 0 4px;letter-spacing:-.01em}
+  h2{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);
+     margin:0 0 12px;font-weight:600}
+  .throwaway{display:inline-block;background:var(--accent);color:#fff;font-size:11px;
+       font-weight:700;letter-spacing:.1em;padding:3px 8px;border-radius:3px;margin-bottom:14px}
+  .question{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--accent);
+       border-radius:6px;padding:16px 18px;margin:18px 0 26px}
+  .question p{margin:0 0 10px} .question p:last-child{margin:0}
+  .run{font-family:var(--mono);font-size:13px;background:#1a1715;color:#f5efe9;
+       padding:10px 12px;border-radius:5px;margin:10px 0 0;overflow-x:auto}
+  .grid{display:grid;grid-template-columns:1fr 340px;gap:20px;align-items:start}
+  @media(max-width:860px){.grid{grid-template-columns:1fr}}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:18px}
+  .stage{position:relative;background:#12100f;border-radius:6px;overflow:hidden;aspect-ratio:4/3}
+  .stage video{width:100%;height:100%;object-fit:cover;display:block}
+  .box{position:absolute;border:3px solid var(--accent);border-radius:3px;pointer-events:none;
+       display:none;box-shadow:0 0 0 9999px rgba(0,0,0,.28)}
+  .box.locked{border-color:#22c55e}
+  .phase{position:absolute;left:12px;top:12px;background:rgba(0,0,0,.72);color:#fff;
+       padding:6px 12px;border-radius:4px;font-family:var(--mono);font-size:12px;letter-spacing:.06em}
+  .count{position:absolute;right:12px;top:12px;background:rgba(0,0,0,.72);color:#fff;
+       padding:6px 12px;border-radius:4px;font-family:var(--mono);font-size:12px}
+  .flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
+  .flash.on{opacity:.85}
+  .btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+  button{font:inherit;font-size:14px;padding:8px 14px;border-radius:5px;border:1px solid var(--line);
+       background:var(--panel);color:var(--ink);cursor:pointer}
+  button:hover{border-color:var(--muted)}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  button:disabled{opacity:.4;cursor:not-allowed}
+  .metric{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;
+       padding:7px 0;border-bottom:1px solid var(--line);font-size:13px}
+  .metric:last-child{border-bottom:0}
+  .metric .name{color:var(--muted)}
+  .metric .val{font-family:var(--mono);font-size:13px;text-align:right;min-width:58px}
+  .pass{font-family:var(--mono);font-size:11px;font-weight:700;min-width:34px;text-align:right}
+  .pass.y{color:var(--good)} .pass.n{color:var(--bad)} .pass.na{color:var(--line)}
+  .slider{margin:12px 0}
+  .slider label{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin-bottom:3px}
+  .slider label b{font-family:var(--mono);color:var(--ink);font-weight:500}
+  .slider input{width:100%;accent-color:var(--accent)}
+  .tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;border-bottom:1px solid var(--line);padding-bottom:14px}
+  .tabs button.on{background:var(--ink);border-color:var(--ink);color:#fff}
+  .scenario h3{margin:0 0 8px;font-size:16px}
+  .scenario p{margin:0 0 10px;color:var(--muted)}
+  .scenario ol{margin:0;padding-left:20px} .scenario li{margin-bottom:7px}
+  .watch{background:#fdf6ee;border:1px solid #f0dfc8;border-radius:5px;padding:11px 13px;margin-top:12px;font-size:14px}
+  .shots{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;min-height:62px}
+  .shots img{width:82px;height:62px;object-fit:cover;border-radius:4px;border:1px solid var(--line)}
+  .shots .none{color:var(--muted);font-size:13px}
+  .log{font-family:var(--mono);font-size:12px;max-height:190px;overflow-y:auto;margin-top:6px}
+  .log div{padding:3px 0;border-bottom:1px solid var(--line);color:var(--muted)}
+  .log b{color:var(--ink);font-weight:600}
+  .err{background:#fef2f2;border:1px solid #fecaca;color:#991b1b;padding:11px 13px;border-radius:5px;margin-top:12px;display:none}
+  section{margin-top:26px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <span class="throwaway">PROTOTYPE — THROWAWAY</span>
+  <h1>Record detection heuristic</h1>
+
+  <div class="question">
+    <p><b>The question this answers:</b> a Stack captures hands-free — you hold up a record,
+    the app sees it, captures it by itself, and waits for the next one. ADR 0005 decided the
+    seeing is done by a heuristic in the browser rather than by a model, because a vision call
+    is roughly a thousand times too slow to track a live preview. But "large, contrasty, and
+    still for a few frames" is a <i>description</i>, not a tuned algorithm.</p>
+    <p>So: does it actually fire when you hold up a record, stay quiet when you don't, and
+    refuse to fire twice on the same record? And what thresholds make that true in your real
+    room, with your real lighting and your real records?</p>
+    <p><b>If the answer is no</b>, hands-free capture is not viable and the Stack falls back to
+    you tapping the shutter yourself. That is the decision riding on this page.</p>
+    <p style="margin-top:12px"><b>To run it</b> — the camera needs a secure context, so serve it
+    rather than double-clicking:</p>
+    <pre class="run">cd src/Modules/SevenBySeven.Modules.Scanning
+python3 -m http.server 8000
+# then open http://localhost:8000/PROTOTYPE-record-detection.html</pre>
+  </div>
+
+  <div class="grid">
+    <div>
+      <div class="stage">
+        <video id="video" playsinline muted autoplay></video>
+        <div class="box" id="box"></div>
+        <div class="phase" id="phase">STOPPED</div>
+        <div class="count" id="count">0 / 10</div>
+        <div class="flash" id="flash"></div>
+      </div>
+      <div class="btns">
+        <button class="primary" id="start">Start camera</button>
+        <button id="stop" disabled>Stop</button>
+        <button id="recal" disabled>Relearn the empty background</button>
+        <button id="reset" disabled>Empty the Stack</button>
+      </div>
+      <div class="err" id="err"></div>
+
+      <section class="panel">
+        <h2>What it captured</h2>
+        <div class="shots" id="shots"><span class="none">Nothing yet.</span></div>
+      </section>
+    </div>
+
+    <div>
+      <div class="panel">
+        <h2>What it sees right now</h2>
+        <div id="metrics"></div>
+      </div>
+
+      <div class="panel" style="margin-top:20px">
+        <h2>Thresholds to tune</h2>
+        <div id="sliders"></div>
+      </div>
+
+      <div class="panel" style="margin-top:20px">
+        <h2>What happened</h2>
+        <div class="log" id="log"></div>
+      </div>
+    </div>
+  </div>
+
+  <section class="panel">
+    <h2>Things to try</h2>
+    <div class="tabs" id="tabs"></div>
+    <div class="scenario" id="scenario"></div>
+  </section>
+
+</div>
+
+<script>
+/* ─────────────────────────────────────────────────────────────────────────────
+   THE PURE MODULE — the bit that answers the question.
+
+   No DOM, no canvas, no camera. It takes the numbers measured from one frame
+   and the current thresholds, and returns the next state plus an effect for
+   the page to carry out. This is what lifts into the real module once the
+   question is settled; everything below it is throwaway page.
+   ───────────────────────────────────────────────────────────────────────────── */
+const Detector = (() => {
+
+  const initial = {
+    phase: 'calibrating',  // calibrating → empty → settling → captured → empty …
+    stillFor: 0,           // consecutive frames held still
+    emptyFor: 0,           // consecutive frames that count as cleared
+    staleFor: 0,           // consecutive still frames of a non-record sitting in view
+    captures: 0,
+    capturedCoverage: 0,   // how full the frame was when we last fired
+    note: 'Learning what an empty frame looks like. Hold nothing up.',
+  };
+
+  // Does what is in view look like a record — big enough, solid enough, busy enough?
+  const looksLikeARecord = (m, t) =>
+    m.coverage >= t.minCoverage && m.fill >= t.minFill && m.contrast >= t.minContrast;
+
+  const isEmpty = (m, t) => m.coverage < t.emptyCoverage;
+
+  // Far less in view than there was when we fired. Relative, so it survives the
+  // baseline drifting upward between records.
+  const hasGone = (s, m, t) =>
+    m.coverage < Math.max(t.emptyCoverage, s.capturedCoverage * t.clearFraction);
+  const isStill = (m, t) => m.motion < t.motionThreshold;
+
+  /** (state, metrics, thresholds) → { state, effect } */
+  function next(s, m, t) {
+    const stay = (patch, effect = null) => ({ state: { ...s, ...patch }, effect });
+
+    if (s.captures >= t.maxStack && s.phase !== 'full') {
+      return stay({ phase: 'full', note: 'The Stack is full. Nothing more will be captured.' }, 'full');
+    }
+    if (s.phase === 'full') return stay({});
+
+    switch (s.phase) {
+      // Hold still with nothing in shot; that frame becomes the reference we
+      // measure everything else against.
+      case 'calibrating': {
+        const stillFor = isStill(m, t) ? s.stillFor + 1 : 0;
+        if (stillFor >= t.calibrateFrames) {
+          return stay(
+            { phase: 'empty', stillFor: 0, emptyFor: 0, note: 'Ready. Hold up a record.' },
+            'learn-background');
+        }
+        return stay({ stillFor, note: 'Learning what an empty frame looks like. Hold nothing up.' });
+      }
+
+      // Nothing in view. Waiting for something to appear. While we wait, the idea
+      // of "empty" is kept up to date, so a camera quietly re-exposing itself does
+      // not slowly poison every later reading.
+      case 'empty': {
+        if (m.coverage >= t.minCoverage) {
+          return stay({ phase: 'settling', stillFor: 0, staleFor: 0, note: 'Something is there. Hold it steady.' });
+        }
+        if (isStill(m, t)) {
+          return stay({ note: 'Ready. Hold up a record.' }, 'adapt-background');
+        }
+        return stay({ note: 'Ready. Hold up a record.' });
+      }
+
+      // Something is in view. It has to look right AND stop moving.
+      case 'settling': {
+        if (isEmpty(m, t)) {
+          return stay({ phase: 'empty', stillFor: 0, staleFor: 0, note: 'It went away again.' });
+        }
+        if (!looksLikeARecord(m, t)) {
+          // In view, not a record, and not moving. That is not somebody presenting
+          // something — that is the room. Absorb it rather than waiting on it.
+          const staleFor = isStill(m, t) ? s.staleFor + 1 : 0;
+          if (staleFor >= t.settleOutFrames) {
+            return stay(
+              { phase: 'empty', stillFor: 0, staleFor: 0, note: 'That is just part of the room now.' },
+              'absorb');
+          }
+          return stay({ stillFor: 0, staleFor, note: 'In view, but it does not look like a record yet.' });
+        }
+        const stillFor = isStill(m, t) ? s.stillFor + 1 : 0;
+        if (stillFor >= t.stillFrames) {
+          return stay(
+            { phase: 'captured', stillFor: 0, emptyFor: 0, staleFor: 0,
+              captures: s.captures + 1, capturedCoverage: m.coverage,
+              note: 'Captured. Now take it away.' },
+            'capture');
+        }
+        return stay({ stillFor, staleFor: 0, note: isStill(m, t) ? 'Holding steady…' : 'Still moving.' });
+      }
+
+      // Already captured. Refuses to fire again until the record has gone — this is
+      // what stops one record being captured twice.
+      //
+      // "Gone" is measured against how full the frame was when we fired, not against
+      // an absolute figure. An absolute test cannot work: your arm is in shot, and the
+      // camera re-exposes when a sleeve fills the lens, so the reading never returns
+      // to where it started and the wait never ends.
+      case 'captured': {
+        const emptyFor = hasGone(s, m, t) ? s.emptyFor + 1 : 0;
+        if (emptyFor >= t.emptyFrames) {
+          return stay(
+            { phase: 'empty', emptyFor: 0, staleFor: 0, note: 'Ready for the next one.' },
+            'rearm');
+        }
+        return stay({ emptyFor, note: 'Take the record away before the next one.' });
+      }
+    }
+    return stay({});
+  }
+
+  return { initial, next, looksLikeARecord, isEmpty, isStill, hasGone };
+})();
+
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   THROWAWAY PAGE BELOW. Camera, canvas sampling, rendering.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+const W = 160, H = 120;            // working resolution — small is fast and less twitchy
+const FPS = 15;
+
+const thresholds = {
+  fgDelta:         { value: 28,   min: 5,   max: 80,  step: 1,
+                     label: 'Foreground sensitivity', help: 'How different from the empty background a pixel must be to count as "something".' },
+  minCoverage:     { value: 0.12, min: .02, max: .6,  step: .01,
+                     label: 'Minimum size', help: 'How much of the frame something must fill before it is worth looking at.' },
+  emptyCoverage:   { value: 0.04, min: .01, max: .3,  step: .01,
+                     label: 'Counts as empty below', help: 'How little must be in view before the frame is considered clear again.' },
+  minFill:         { value: 0.45, min: .1,  max: .95, step: .05,
+                     label: 'Minimum solidity', help: 'A record is a solid rectangle. A waving hand is not.' },
+  minContrast:     { value: 18,   min: 0,   max: 60,  step: 1,
+                     label: 'Minimum busyness', help: 'Sleeve art and print have variation. A blank surface does not.' },
+  motionThreshold: { value: 2.5,  min: .5,  max: 15,  step: .1,
+                     label: 'Counts as still below', help: 'How much the picture may change frame to frame and still count as held steady.' },
+  stillFrames:     { value: 8,    min: 2,   max: 30,  step: 1,
+                     label: 'Frames held still', help: 'How long it must be steady before firing. 15 frames is about a second.' },
+  emptyFrames:     { value: 6,    min: 2,   max: 30,  step: 1,
+                     label: 'Frames clear before re-arming', help: 'How long the frame must be clear before the next record can be captured.' },
+  clearFraction:   { value: 0.35, min: .05, max: .9,  step: .05,
+                     label: 'Counts as gone below', help: 'A fraction of how full the frame was when it fired. 0.35 means the record counts as gone once barely a third of it is left.' },
+  settleOutFrames: { value: 25,   min: 5,   max: 90,  step: 1,
+                     label: 'Frames before absorbing', help: 'Something in view that is not a record and never moves gets treated as part of the room after this long.' },
+  calibrateFrames: { value: 10,   min: 3,   max: 40,  step: 1,
+                     label: 'Frames to learn the background', help: 'How long to watch an empty scene before trusting it as the reference.' },
+  maxStack:        { value: 10,   min: 1,   max: 20,  step: 1,
+                     label: 'Stack limit', help: 'Hard stop, as agreed.' },
+};
+const t = () => Object.fromEntries(Object.entries(thresholds).map(([k, v]) => [k, v.value]));
+
+const $ = id => document.getElementById(id);
+const video = $('video');
+const work = document.createElement('canvas'); work.width = W; work.height = H;
+const wctx = work.getContext('2d', { willReadFrequently: true });
+const shot = document.createElement('canvas');
+
+let stream = null, timer = null;
+let background = null, prevLuma = null;
+const ADAPT = 0.08;   // how fast the idle background creeps toward what it sees
+let state = { ...Detector.initial };
+let metrics = { coverage: 0, fill: 0, contrast: 0, motion: 0, box: null };
+
+function luminance(data) {
+  const l = new Uint8ClampedArray(W * H);
+  for (let i = 0, p = 0; i < data.length; i += 4, p++) {
+    l[p] = (data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114) | 0;
+  }
+  return l;
+}
+
+/** Everything the pure module needs, measured off one frame. */
+function measure(luma) {
+  const th = t();
+
+  let motion = 0;
+  if (prevLuma) {
+    let sum = 0;
+    for (let i = 0; i < luma.length; i++) sum += Math.abs(luma[i] - prevLuma[i]);
+    motion = sum / luma.length;
+  }
+
+  if (!background) return { coverage: 0, fill: 0, contrast: 0, motion, box: null };
+
+  // Foreground = whatever differs from the empty frame we learned earlier.
+  const rows = new Int32Array(H), cols = new Int32Array(W);
+  let count = 0;
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const i = y * W + x;
+      if (Math.abs(luma[i] - background[i]) > th.fgDelta) { rows[y]++; cols[x]++; count++; }
+    }
+  }
+  const coverage = count / (W * H);
+  if (!count) return { coverage: 0, fill: 0, contrast: 0, motion, box: null };
+
+  // Trim to where the foreground is actually dense, so a few stray pixels
+  // cannot stretch the box across the whole frame.
+  const edge = (arr, span, frac) => {
+    const floor = span * frac;
+    let lo = 0, hi = arr.length - 1;
+    while (lo < arr.length && arr[lo] < floor) lo++;
+    while (hi > lo && arr[hi] < floor) hi--;
+    return [lo, hi];
+  };
+  const [y0, y1] = edge(rows, W, 0.04);
+  const [x0, x1] = edge(cols, H, 0.04);
+  const bw = Math.max(1, x1 - x0 + 1), bh = Math.max(1, y1 - y0 + 1);
+
+  const fill = count / (bw * bh);
+
+  let sum = 0, sum2 = 0, n = 0;
+  for (let y = y0; y <= y1; y++) {
+    for (let x = x0; x <= x1; x++) { const v = luma[y * W + x]; sum += v; sum2 += v * v; n++; }
+  }
+  const mean = sum / n;
+  const contrast = Math.sqrt(Math.max(0, sum2 / n - mean * mean));
+
+  return { coverage, fill, contrast, motion,
+           box: { x: x0 / W, y: y0 / H, w: bw / W, h: bh / H } };
+}
+
+function tick() {
+  if (!video.videoWidth) return;
+  wctx.drawImage(video, 0, 0, W, H);
+  const luma = luminance(wctx.getImageData(0, 0, W, H).data);
+
+  metrics = measure(luma);
+  const { state: nextState, effect } = Detector.next(state, metrics, t());
+  const changed = nextState.phase !== state.phase;
+  state = nextState;
+
+  if (effect === 'learn-background') { background = Float32Array.from(luma); log('Learned the empty background.'); }
+  if (effect === 'rearm')    { background = Float32Array.from(luma); log('Record gone. Ready for the next.'); }
+  if (effect === 'absorb')   { background = Float32Array.from(luma); log('Something static was absorbed into the background.'); }
+  if (effect === 'adapt-background' && background) {
+    for (let i = 0; i < luma.length; i++) background[i] += (luma[i] - background[i]) * ADAPT;
+  }
+  if (effect === 'capture')  { grab(); flash(); log(`<b>CAPTURED</b> — record ${state.captures}.`); }
+  if (effect === 'full')     { log('<b>Stack full.</b> Capture stopped.'); }
+  if (changed && !effect)    { log(`→ ${state.phase}`); }
+
+  prevLuma = luma;
+  render();
+}
+
+function grab() {
+  shot.width = video.videoWidth; shot.height = video.videoHeight;
+  shot.getContext('2d').drawImage(video, 0, 0);
+  const img = new Image(); img.src = shot.toDataURL('image/jpeg', 0.7);
+  if ($('shots').querySelector('.none')) $('shots').innerHTML = '';
+  $('shots').appendChild(img);
+}
+
+function flash() {
+  $('flash').classList.add('on');
+  setTimeout(() => $('flash').classList.remove('on'), 110);
+}
+
+function log(msg) {
+  const d = document.createElement('div');
+  d.innerHTML = `${new Date().toLocaleTimeString()}  ${msg}`;
+  $('log').prepend(d);
+  while ($('log').children.length > 60) $('log').lastChild.remove();
+}
+
+function render() {
+  const th = t();
+  $('phase').textContent = state.phase.toUpperCase();
+  $('count').textContent = `${state.captures} / ${th.maxStack}`;
+
+  const box = $('box');
+  if (metrics.box && state.phase !== 'calibrating' && metrics.coverage >= th.emptyCoverage) {
+    const b = metrics.box;
+    Object.assign(box.style, {
+      display: 'block', left: b.x * 100 + '%', top: b.y * 100 + '%',
+      width: b.w * 100 + '%', height: b.h * 100 + '%',
+    });
+    box.classList.toggle('locked', Detector.looksLikeARecord(metrics, th));
+  } else {
+    box.style.display = 'none';
+  }
+
+  const rows = [
+    ['What it is doing', state.note, null],
+    ['Size in frame', (metrics.coverage * 100).toFixed(1) + '%', metrics.coverage >= th.minCoverage],
+    ['Solidity', metrics.fill.toFixed(2), metrics.fill >= th.minFill],
+    ['Busyness', metrics.contrast.toFixed(1), metrics.contrast >= th.minContrast],
+    ['Movement', metrics.motion.toFixed(2), metrics.motion < th.motionThreshold],
+    ['Held still for', `${state.stillFor} / ${th.stillFrames}`, null],
+    ['Clear for', `${state.emptyFor} / ${th.emptyFrames}`, null],
+    ['Full when it fired', (state.capturedCoverage * 100).toFixed(1) + '%', null],
+    ['Counts as gone below',
+      (Math.max(th.emptyCoverage, state.capturedCoverage * th.clearFraction) * 100).toFixed(1) + '%',
+      state.phase === 'captured' ? Detector.hasGone(state, metrics, th) : null],
+    ['Looks like a record', Detector.looksLikeARecord(metrics, th) ? 'yes' : 'no',
+      Detector.looksLikeARecord(metrics, th)],
+  ];
+  $('metrics').innerHTML = rows.map(([name, val, ok]) => `
+    <div class="metric">
+      <span class="name">${name}</span>
+      <span class="val">${val}</span>
+      <span class="pass ${ok === null ? 'na' : ok ? 'y' : 'n'}">${ok === null ? '' : ok ? 'PASS' : 'no'}</span>
+    </div>`).join('');
+}
+
+/* Camera */
+$('start').onclick = async () => {
+  $('err').style.display = 'none';
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 } }, audio: false,
+    });
+    video.srcObject = stream; await video.play();
+    background = null; prevLuma = null; state = { ...Detector.initial };
+    timer = setInterval(tick, 1000 / FPS);
+    ['stop', 'recal', 'reset'].forEach(id => $(id).disabled = false);
+    $('start').disabled = true;
+    log('Camera started.');
+  } catch (e) {
+    $('err').style.display = 'block';
+    $('err').textContent = window.isSecureContext
+      ? `The camera would not start: ${e.message}`
+      : 'This page is not in a secure context, so the browser refuses the camera. Serve it over localhost — see the command at the top.';
+  }
+};
+$('stop').onclick = () => {
+  clearInterval(timer); timer = null;
+  stream?.getTracks().forEach(x => x.stop()); stream = null;
+  $('phase').textContent = 'STOPPED'; $('box').style.display = 'none';
+  ['stop', 'recal', 'reset'].forEach(id => $(id).disabled = true);
+  $('start').disabled = false;
+  log('Camera stopped.');
+};
+$('recal').onclick = () => {
+  background = null; state = { ...Detector.initial };
+  log('Relearning the background — hold nothing up.');
+};
+$('reset').onclick = () => {
+  state = { ...Detector.initial, phase: 'empty', note: 'Ready. Hold up a record.' };
+  $('shots').innerHTML = '<span class="none">Nothing yet.</span>';
+  log('Stack emptied.');
+};
+
+/* Sliders */
+$('sliders').innerHTML = Object.entries(thresholds).map(([k, c]) => `
+  <div class="slider">
+    <label for="s_${k}"><span title="${c.help}">${c.label}</span><b id="v_${k}">${c.value}</b></label>
+    <input type="range" id="s_${k}" min="${c.min}" max="${c.max}" step="${c.step}" value="${c.value}">
+  </div>`).join('');
+Object.keys(thresholds).forEach(k => {
+  $('s_' + k).oninput = e => {
+    thresholds[k].value = parseFloat(e.target.value);
+    $('v_' + k).textContent = e.target.value;
+    render();
+  };
+});
+
+/* Scenarios — physical, because you cannot drive a camera with buttons */
+const scenarios = [
+  { name: 'The happy path',
+    why: 'The case everything else is measured against. If this is not comfortably reliable, nothing else matters.',
+    steps: ['Start the camera pointing at an empty background and hold still while it learns the frame.',
+            'Hold a record up, square to the lens, filling a good part of the frame.',
+            'Hold it steady and wait. It should highlight green, then fire.',
+            'Take the record away and watch it return to ready.',
+            'Do it again with a second record.'],
+    watch: 'How long the steady hold has to be before it fires, and whether that feels natural or like waiting.' },
+
+  { name: 'The impostor',
+    why: 'ADR 0005 says outright that this will capture a book, and accepts it — a junk capture comes back with no match and is abandoned. This is where you find out how often it will actually happen.',
+    steps: ['With the camera running, hold up a hardback book the same way you held the record.',
+            'Then a cereal box, or anything else flat and rectangular.',
+            'Then your open hand, held still.',
+            'Then your face.'],
+    watch: 'Whether "busyness" and "solidity" separate a record from a book at all. If your hand fires too, raise the solidity and busyness thresholds until it stops.' },
+
+  { name: 'The slow swap',
+    why: 'The empty-frame rule is load-bearing. Without it, one record lingering in shot gets captured over and over and your Stack fills with duplicates.',
+    steps: ['Hold a record up and let it capture.',
+            'Do not move it. Keep holding it there for ten seconds.',
+            'Confirm the count does not go up a second time.',
+            'Lower it out of shot, then bring a different record straight back up.'],
+    watch: 'It must not fire twice. If it does, the clear-before-re-arming threshold is too lax.' },
+
+  { name: 'The wobble',
+    why: 'You will be holding these at arm\'s length, one-handed, possibly for ten in a row. Nobody is steady.',
+    steps: ['Hold a record up but let your hand drift slightly, as it naturally will.',
+            'See whether it fires anyway or sits waiting.',
+            'If it never fires, raise the movement threshold until a natural hold succeeds.',
+            'Then check the impostor scenario still behaves at that setting.'],
+    watch: 'The tension in the whole design. Too strict and you stand there holding a record; too loose and you capture a blur that reads as no match.' },
+
+  { name: 'The bad room',
+    why: 'ADR 0005 records that detection degrades where the record does not contrast with what is behind it, and calls that a technique to teach rather than a bug to fix. Worth seeing how bad it gets.',
+    steps: ['Hold a dark sleeve against a dark background, or a pale one against a wall.',
+            'Watch the size-in-frame reading collapse.',
+            'Try the room with the lights lower.',
+            'Then deliberately put something contrasting behind you and try again.'],
+    watch: 'Whether there is any threshold setting that works in a bad room, or whether the honest answer is that the capture screen has to tell you to find a contrasting background.' },
+];
+
+let active = 0;
+function drawScenario() {
+  $('tabs').innerHTML = scenarios.map((s, i) =>
+    `<button class="${i === active ? 'on' : ''}" data-i="${i}">${s.name}</button>`).join('');
+  $('tabs').querySelectorAll('button').forEach(b =>
+    b.onclick = () => { active = +b.dataset.i; drawScenario(); });
+  const s = scenarios[active];
+  $('scenario').innerHTML = `
+    <h3>${s.name}</h3><p>${s.why}</p>
+    <ol>${s.steps.map(x => `<li>${x}</li>`).join('')}</ol>
+    <div class="watch"><b>What to watch:</b> ${s.watch}</div>`;
+}
+drawScenario();
+render();
+</script>
+</body>
+</html>
