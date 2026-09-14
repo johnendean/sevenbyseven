@@ -81,6 +81,7 @@ src/Modules/…Identification       barcode decode, sleeve reading, Discogs sear
 src/Modules/…Catalogue            Release and Track — cached Discogs data
 src/Modules/…Collection           Copy — the records I own, and the pages for browsing them
 tests/SevenBySeven.Tests          unit tests, plus Aspire integration test support
+scripts                           the coverage gate CI and you both run
 ```
 
 Modules are separate projects so the boundaries are enforced by the compiler rather than
