@@ -29,8 +29,12 @@ _Avoid_: Library, Inventory, Catalogue (see below), Shelf
 ### Identifying a record
 
 **Scan**:
-A single attempt to identify a Copy from a photograph of its sleeve or centre label. A Scan lasts only until it is confirmed or abandoned; it is never kept.
+A single attempt to identify a Copy from a photograph of its sleeve or centre label. A Scan lasts only until it is confirmed or abandoned; it is never kept. A Scan may stand alone, or be one of the Scans in a Stack.
 _Avoid_: Capture, Upload, Photo, Session
+
+**Stack**:
+A run of Scans captured back to back from one camera session, up to a fixed limit. A Stack holds its Scans together until each has been confirmed or abandoned, and is then gone: a Stack is no more kept than the Scans in it.
+_Avoid_: Batch, Queue, Run, Crate, Session
 
 **Match Candidate**:
 One of the Releases put forward as the possible answer to a Scan, shown to me alongside its sleeve image and pressing details.
