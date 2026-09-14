@@ -69,3 +69,24 @@
     gap: 0.5rem;
     margin: 1.5rem 0 0.5rem;
 }
+
+.copy-form {
+    max-width: 24rem;
+}
+
+.copy-field {
+    margin-bottom: 0.75rem;
+}
+
+.copy-field-pair {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.copy-field-pair .copy-field:first-child {
+    flex: 2 1 0;
+}
+
+.copy-field-pair .copy-field:last-child {
+    flex: 1 1 0;
+}

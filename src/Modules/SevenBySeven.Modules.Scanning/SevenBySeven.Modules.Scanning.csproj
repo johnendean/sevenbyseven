@@ -8,6 +8,10 @@
 
 
   <ItemGroup>
+    <InternalsVisibleTo Include="SevenBySeven.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <SupportedPlatform Include="browser" />
   </ItemGroup>
 
@@ -18,6 +22,8 @@
   <ItemGroup>
     <ProjectReference Include="..\..\SevenBySeven.Shared\SevenBySeven.Shared.csproj" />
     <ProjectReference Include="..\SevenBySeven.Modules.Identification\SevenBySeven.Modules.Identification.csproj" />
+    <ProjectReference Include="..\SevenBySeven.Modules.Catalogue\SevenBySeven.Modules.Catalogue.csproj" />
+    <ProjectReference Include="..\SevenBySeven.Modules.Collection\SevenBySeven.Modules.Collection.csproj" />
   </ItemGroup>
 
 </Project>

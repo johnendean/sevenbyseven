@@ -36,7 +36,7 @@ export function stopStream() {
     stream = null;
 }
 
-function toJpeg(source, sourceWidth, sourceHeight, maxDimension, quality) {
+export function toJpeg(source, sourceWidth, sourceHeight, maxDimension, quality) {
     const scale = Math.min(1, maxDimension / Math.max(sourceWidth, sourceHeight));
     const canvas = document.createElement("canvas");
     canvas.width = Math.max(1, Math.round(sourceWidth * scale));

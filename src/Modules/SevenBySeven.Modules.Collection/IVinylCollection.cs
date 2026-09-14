@@ -12,6 +12,14 @@ public interface IVinylCollection
     /// <summary>Adds a Copy of a Release already held in the Catalogue.</summary>
     Task<Copy> AddAsync(Guid releaseId, CopyDetails details, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Changes what I know about a Copy I already own. This exists because a Stack adds
+    /// records without stopping to ask: condition and price are the facts no lookup can
+    /// ever supply, so without a way to set them afterwards they would be lost for good.
+    /// False when there is no such Copy.
+    /// </summary>
+    Task<bool> UpdateAsync(Guid copyId, CopyDetails details, CancellationToken cancellationToken = default);
+
     /// <summary>Every Copy, most recently added first, each with the pressing it is a copy of.</summary>
     Task<IReadOnlyList<Copy>> ListAsync(CancellationToken cancellationToken = default);
 

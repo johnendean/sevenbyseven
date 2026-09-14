@@ -40,6 +40,78 @@ public class VinylCollectionTests
     }
 
     [Fact]
+    public async Task What_I_know_about_a_copy_can_be_filled_in_afterwards()
+    {
+        // A Stack adds records without stopping to ask. Without this, condition and
+        // price — the facts no lookup can ever supply — would be lost for good.
+        await using var database = await TestDatabase.CreateAsync();
+        var release = await HeldRelease(database);
+
+        await using var context = database.NewContext();
+        var collection = new VinylCollection(context);
+        var copy = await collection.AddAsync(release, CopyDetails.Unknown);
+
+        var updated = await collection.UpdateAsync(copy.Id, new CopyDetails
+        {
+            MediaCondition = ConditionGrade.NearMint,
+            PricePaid = 12m,
+            PricePaidCurrency = "gbp",
+            Location = "Shelf A",
+        });
+
+        await using var later = database.NewContext();
+        var held = await later.Set<Copy>().SingleAsync();
+
+        Assert.True(updated);
+        Assert.Equal(ConditionGrade.NearMint, held.MediaCondition);
+        Assert.Equal(12m, held.PricePaid);
+        Assert.Equal("GBP", held.PricePaidCurrency);
+        Assert.Equal("Shelf A", held.Location);
+    }
+
+    [Fact]
+    public async Task Clearing_the_price_takes_the_currency_with_it()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var release = await HeldRelease(database);
+
+        await using var context = database.NewContext();
+        var collection = new VinylCollection(context);
+        var copy = await collection.AddAsync(
+            release, new CopyDetails { PricePaid = 30m, PricePaidCurrency = "GBP" });
+
+        await collection.UpdateAsync(copy.Id, new CopyDetails { Location = "Loft" });
+
+        await using var later = database.NewContext();
+        var held = await later.Set<Copy>().SingleAsync();
+
+        Assert.Null(held.PricePaid);
+        Assert.Null(held.PricePaidCurrency);
+        Assert.Equal("Loft", held.Location);
+    }
+
+    [Fact]
+    public async Task Updating_a_copy_that_is_not_mine_changes_nothing()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+
+        await using var context = database.NewContext();
+
+        Assert.False(await new VinylCollection(context)
+            .UpdateAsync(Guid.CreateVersion7(), CopyDetails.Unknown));
+    }
+
+    [Fact]
+    public async Task An_update_needs_details_to_apply()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        await using var context = database.NewContext();
+
+        await Assert.ThrowsAsync<ArgumentNullException>(
+            () => new VinylCollection(context).UpdateAsync(Guid.CreateVersion7(), null!));
+    }
+
+    [Fact]
     public async Task Two_copies_of_one_pressing_are_two_records()
     {
         await using var database = await TestDatabase.CreateAsync();

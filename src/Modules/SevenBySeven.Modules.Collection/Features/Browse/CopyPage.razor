@@ -2,6 +2,7 @@
 @rendermode InteractiveServer
 @inject IVinylCollection Collection
 @inject NavigationManager Navigation
+@inject ILogger<CopyPage> Logger
 
 <PageTitle>@(_copy?.Release is { } found ? $"{found.ArtistName} — {found.Title}" : "A record")</PageTitle>
 
@@ -74,6 +75,79 @@ else
             </p>
 
             <h2>This copy</h2>
+
+            @if (_editing)
+            {
+                <EditForm Model="_form" OnValidSubmit="Save" class="copy-form">
+                    <DataAnnotationsValidator />
+
+                    <div class="copy-field">
+                        <label class="form-label" for="media">Media condition</label>
+                        <InputSelect id="media" class="form-select" @bind-Value="_form.MediaCondition">
+                            <option value="">Not graded</option>
+                            @foreach (var grade in ConditionGrades.BestFirst)
+                            {
+                                <option value="@grade">@grade.Label()</option>
+                            }
+                        </InputSelect>
+                    </div>
+
+                    <div class="copy-field">
+                        <label class="form-label" for="sleeve">Sleeve condition</label>
+                        <InputSelect id="sleeve" class="form-select" @bind-Value="_form.SleeveCondition">
+                            <option value="">Not graded</option>
+                            @foreach (var grade in ConditionGrades.BestFirst)
+                            {
+                                <option value="@grade">@grade.Label()</option>
+                            }
+                        </InputSelect>
+                    </div>
+
+                    <div class="copy-field-pair">
+                        <div class="copy-field">
+                            <label class="form-label" for="price">Paid</label>
+                            <InputNumber id="price" class="form-control" @bind-Value="_form.PricePaid" step="0.01" />
+                        </div>
+                        <div class="copy-field">
+                            <label class="form-label" for="currency">Currency</label>
+                            <InputText id="currency" class="form-control" @bind-Value="_form.Currency" maxlength="3" />
+                        </div>
+                    </div>
+
+                    <div class="copy-field">
+                        <label class="form-label" for="from">Bought from</label>
+                        <InputText id="from" class="form-control" @bind-Value="_form.PurchasedFrom" />
+                    </div>
+
+                    <div class="copy-field">
+                        <label class="form-label" for="where">Kept</label>
+                        <InputText id="where" class="form-control" @bind-Value="_form.Location" />
+                    </div>
+
+                    <div class="copy-field">
+                        <label class="form-label" for="notes">Notes</label>
+                        <InputTextArea id="notes" class="form-control" rows="3" @bind-Value="_form.Notes" />
+                    </div>
+
+                    <ValidationSummary />
+
+                    @if (_saveError is not null)
+                    {
+                        <div class="alert alert-danger" role="alert">@_saveError</div>
+                    }
+
+                    <div class="copy-actions">
+                        <button type="submit" class="btn btn-primary" disabled="@_saving">
+                            @(_saving ? "Saving…" : "Save these details")
+                        </button>
+                        <button type="button" class="btn btn-secondary" @onclick="CancelEdit" disabled="@_saving">
+                            Cancel
+                        </button>
+                    </div>
+                </EditForm>
+            }
+            else
+            {
             <dl>
                 <dt>Added</dt>
                 <dd>@_copy.AddedOn.ToLocalTime().ToString("d MMMM yyyy")</dd>
@@ -108,6 +182,18 @@ else
                     <dd>@_copy.Notes</dd>
                 }
             </dl>
+
+            @if (!HasOwnDetails(_copy))
+            {
+                <p class="copy-meta">
+                    Nothing recorded beyond the pressing itself. Condition and what you
+                    paid are the things no lookup can supply, so they are worth a minute
+                    now if you remember them.
+                </p>
+            }
+
+            <button class="btn btn-outline-secondary" @onclick="StartEdit">Edit these details</button>
+            }
         </div>
     </div>
 
@@ -173,6 +259,10 @@ else
     public Guid Id { get; set; }
 
     private Copy? _copy;
+    private CopyForm _form = new();
+    private bool _editing;
+    private bool _saving;
+    private string? _saveError;
     private bool _loaded;
     private bool _confirmingRemoval;
     private bool _removing;
@@ -185,6 +275,59 @@ else
         _loaded = true;
         _showsBpm = _copy?.Release?.Tracks.Any(track => track.Bpm is not null) ?? false;
     }
+
+    /// <summary>
+    /// A Stack adds Copies without stopping to ask for condition or price, so this is
+    /// where those arrive. Nothing else can supply them.
+    /// </summary>
+    private void StartEdit()
+    {
+        _form = CopyForm.For(_copy!);
+        _saveError = null;
+        _editing = true;
+    }
+
+    private void CancelEdit()
+    {
+        _editing = false;
+        _saveError = null;
+    }
+
+    private async Task Save()
+    {
+        if (_saving)
+        {
+            return;
+        }
+
+        _saving = true;
+        _saveError = null;
+
+        try
+        {
+            await Collection.UpdateAsync(Id, _form.ToDetails());
+            _copy = await Collection.FindAsync(Id);
+            _editing = false;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Updating copy {CopyId} failed.", Id);
+            _saveError = "Those details could not be saved. The database may be unreachable.";
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    /// <summary>Whether anything is known about this Copy beyond the pressing it is of.</summary>
+    private static bool HasOwnDetails(Copy copy) =>
+        copy.MediaCondition is not null
+        || copy.SleeveCondition is not null
+        || copy.PricePaid is not null
+        || !string.IsNullOrWhiteSpace(copy.PurchasedFrom)
+        || !string.IsNullOrWhiteSpace(copy.Location)
+        || !string.IsNullOrWhiteSpace(copy.Notes);
 
     private async Task Remove()
     {

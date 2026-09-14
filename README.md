@@ -61,6 +61,40 @@ Browsers only grant camera access in a secure context, so the live preview works
 page falls back to a file input with `capture="environment"`, which opens the phone's own
 camera app and works anywhere — that is the path to use from your shelves.
 
+## Scanning a stack
+
+A Stack captures hands-free, for when you have a pile to get through rather than one
+record. Hold a record up to the camera; it is captured on its own once it is steady, and
+the camera then waits for the next one. Take one away before presenting another — the gap
+is what tells the app that a different record has arrived, not the same one still in
+shot.
+
+Nothing is identified while you are capturing. When the pile is done you work through the
+results at a desk: every Scan is listed with its Match Candidates, confirmed in any order,
+and anything that matched nothing is abandoned from the list. Where you bought them and
+where they are kept are asked once for the whole Stack rather than ten times.
+
+A Stack holds ten records by default and stops there. Raise it for an afternoon of
+cataloguing and put it back afterwards:
+
+```bash
+Scanning__MaxStackSize=20 dotnet run --project src/SevenBySeven.AppHost
+```
+
+The value is clamped — photographs are held in memory until they are confirmed or
+abandoned, so an unchecked one is measured in tens of megabytes per user. The detector's
+own thresholds sit under `Scanning__Detection__*` and are worth touching only if the
+highlight misbehaves in your room; what they mean, and why detection is a browser
+heuristic rather than a call to a model, is in
+[ADR 0005](./docs/adr/0005-record-detection-is-a-browser-heuristic.md).
+
+A Stack lives in the browser's connection to the server. It survives moving around the
+app — a marker in the header says one is in progress — but closing the tab ends it, and
+the photographs go with it, exactly as a single Scan does.
+
+Since it needs the live camera, a Stack is unavailable in the plain-HTTP case above.
+Scan records one at a time from your phone.
+
 ## Adding a record
 
 Confirming a match ends the Scan and hands the pressing over to the collection. Its full
@@ -69,6 +103,10 @@ your Copy is recorded against it. Condition, price, where you bought it and wher
 it are all optional. Two copies of the same pressing are two records, so adding the same
 release twice is the right way to say you own two.
 
+A Stack adds Copies without stopping to ask, so those arrive with only the pressing
+against them. Condition and price are the facts nothing can look up, so a record's own
+page can edit them back in afterwards.
+
 ## Layout
 
 ```
@@ -76,7 +114,7 @@ src/SevenBySeven.AppHost          Aspire orchestration: Postgres, pgweb, the web
 src/SevenBySeven.ServiceDefaults  telemetry, health checks, HTTP resilience
 src/SevenBySeven.Web              Blazor Server host; composes the modules
 src/SevenBySeven.Shared           IModule, the DbContext, schema names
-src/Modules/…Scanning             camera capture and photo intake
+src/Modules/…Scanning             camera capture and photo intake, one record or a Stack
 src/Modules/…Identification       barcode decode, sleeve reading, Discogs search
 src/Modules/…Catalogue            Release and Track — cached Discogs data
 src/Modules/…Collection           Copy — the records I own, and the pages for browsing them

@@ -33,6 +33,35 @@ internal sealed class VinylCollection(SevenBySevenDbContext database) : IVinylCo
         return copy;
     }
 
+    public async Task<bool> UpdateAsync(
+        Guid copyId,
+        CopyDetails details,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(details);
+
+        // Tracked, unlike every read on this class: this one is going to be written back.
+        var copy = await database.Set<Copy>()
+            .FirstOrDefaultAsync(candidate => candidate.Id == copyId, cancellationToken);
+
+        if (copy is null)
+        {
+            return false;
+        }
+
+        copy.MediaCondition = details.MediaCondition;
+        copy.SleeveCondition = details.SleeveCondition;
+        copy.PricePaid = details.PricePaid;
+        copy.PricePaidCurrency = details.PricePaid is null ? null : Currency(details.PricePaidCurrency);
+        copy.PurchasedFrom = Trimmed(details.PurchasedFrom);
+        copy.Location = Trimmed(details.Location);
+        copy.Notes = Trimmed(details.Notes);
+
+        await database.SaveChangesAsync(cancellationToken);
+
+        return true;
+    }
+
     public async Task<IReadOnlyList<Copy>> ListAsync(CancellationToken cancellationToken = default) =>
         await Reading()
             .Include(copy => copy.Release)
