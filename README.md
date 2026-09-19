@@ -61,6 +61,11 @@ Browsers only grant camera access in a secure context, so the live preview works
 page falls back to a file input with `capture="environment"`, which opens the phone's own
 camera app and works anywhere — that is the path to use from your shelves.
 
+Serving the app over trusted HTTPS on a hostname lifts that restriction, and is also the
+groundwork for installing this on a phone as an app rather than a bookmark.
+[docs/mobile-distribution.md](./docs/mobile-distribution.md) weighs up how to get there,
+and what distributing outside the app stores does and does not allow.
+
 ## Scanning a stack
 
 A Stack captures hands-free, for when you have a pile to get through rather than one
