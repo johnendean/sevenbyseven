@@ -28,6 +28,26 @@ fits a personal catalogue best — a certificate, devices already on the tailnet
 exposed publicly. Cloudflare Tunnel gets a public hostname without opening a port, and
 Azure Container Apps is where Aspire deploys if the thing should simply live somewhere.
 
+## Keeping an installed copy current
+
+Installing is the part everyone thinks about; staying current is the part that decides
+whether a store-free app is tolerable a year later. A PWA has nothing to solve here — the
+installed copy is the site, so it updates when it loads and the service worker's only job
+is to not serve a stale shell forever. That is a real advantage over every native route and
+is easy to undervalue while the app is new.
+
+An APK does have the problem. Sideloading installs a version and then forgets about it, so
+a hand-installed build quietly rots. Obtainium fixes this from the other end: it installs
+directly from a GitHub release or a plain APK URL and then checks for updates the way a
+store would. A CI job that attaches a signed APK to each release turns that into ordinary
+update notifications without anyone running a store. F-Droid and Accrescent are the fuller
+channels if it ever needed to be public.
+
+The native frameworks answer it differently, by shipping a shell once and pushing the code
+inside it over the air — EAS Update for Expo, Capgo or Appflow for Capacitor, Shorebird for
+Flutter. It is a genuinely good mechanism and it is the strongest practical argument for
+those toolchains. It is also solving a problem the web does not have.
+
 ## Distribution without a store
 
 **Android allows it.** A signed APK hosted anywhere installs once the user permits unknown
@@ -45,13 +65,34 @@ company of a hundred or more and gets its certificate revoked when used for the 
 web distribution under the DMA is real on iOS 17.5 and later but gated behind two years of
 good-standing membership and a million first annual installs in the EU.
 
-## The route not to take yet
+## Rewriting the client buys less than it looks
 
-.NET MAUI Blazor Hybrid reuses the Razor components, which is the appeal, but Hybrid runs
-them on the device. The pages reach into `DbContext` and the Discogs services in process, so
-every module would have to be split behind an HTTP API and rewritten as a client — weeks of
-work, and the compiler-enforced module boundaries would need rethinking along with it.
+The obvious follow-up question is whether some other frontend framework unlocks this. It
+does not, and the reason is worth stating plainly: no framework changes the platform rules.
+Anything producing a signed iOS binary meets the same hundred-device ceiling above, whoever
+built it, and Android permits sideloading regardless. The choice moves the tooling around
+distribution, never the permission.
 
-It only earns that cost if offline capture becomes a goal: photographing a crate somewhere
-with no signal and syncing afterwards. Until someone wants that, the PWA is strictly better
-value.
+What the tooling difference is worth: Expo is the best of it, where EAS Build produces
+internal-distribution builds served from a hosted install page — a URL you open on the
+phone, which is as close to the original wish as Apple allows, still capped at registered
+devices. Capacitor is the shortest path from an existing web app to a self-updating Android
+artifact. Flutter builds a fine APK and would mean writing the client again in Dart. Tauri
+targets mobile now, but the mobile half is markedly less mature than the desktop one.
+
+None of them are cheap here, because this frontend is not portable. The Razor components
+reach into `DbContext` and the Discogs services in process, so any of these means building
+the HTTP API *and* rewriting every page in another language — strictly more work than the
+two routes below, for a distribution outcome that is identical.
+
+**.NET MAUI Blazor Hybrid** reuses the Razor components, which is the appeal, but Hybrid runs
+them on the device. That same coupling applies: every module would have to be split behind an
+HTTP API and rewritten as a client, weeks of work, with the compiler-enforced module
+boundaries needing rethinking along with it.
+
+**Blazor WebAssembly as a PWA** is the one worth weighing if that split ever happens anyway.
+It stays in C#, reuses the components more directly than Hybrid would, and unlike Blazor
+Server it can actually run with the host unreachable. That is the single capability the
+current architecture cannot reach, and the only one that justifies the cost: capturing a
+crate somewhere with no signal and syncing afterwards. Until someone wants that, the Server
+app behind a PWA shell is strictly better value than any of this.
