@@ -3,7 +3,7 @@
 
 <div class="gig-field">
     <label class="form-label" for="played-on">Played on</label>
-    <InputDate id="played-on" class="form-control" @bind-Value="Form.PlayedOn" />
+    <DatePicker Id="played-on" @bind-Value="Form.PlayedOn" />
     <ValidationMessage For="() => Form.PlayedOn" />
 </div>
 

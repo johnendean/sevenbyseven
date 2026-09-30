@@ -1,0 +1,96 @@
+@using System.Diagnostics.CodeAnalysis
+@inherits InputBase<DateOnly?>
+
+@* A calendar drawn by the page rather than the browser, because the browser's own
+   popup cannot be sized and is too small to hit reliably. Opens under the field and
+   closes once a day is picked. *@
+
+<div class="date-picker">
+    <button type="button" id="@Id" class="form-control date-picker-field @CssClass" @onclick="Toggle"
+            aria-haspopup="dialog" aria-expanded="@(_open ? "true" : "false")">
+        @(CurrentValue is { } chosen ? chosen.ToString("d MMMM yyyy") : "Choose a date")
+        <span class="date-picker-caret" aria-hidden="true">&#9662;</span>
+    </button>
+
+    @if (_open)
+    {
+        <div class="date-picker-calendar" role="dialog" aria-label="Choose a date">
+            <div class="date-picker-heading">
+                <button type="button" class="date-picker-step" @onclick="() => _month = _month.Previous()" aria-label="Previous month">&lsaquo;</button>
+                <strong>@_month.Title</strong>
+                <button type="button" class="date-picker-step" @onclick="() => _month = _month.Next()" aria-label="Next month">&rsaquo;</button>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        @foreach (var heading in CalendarMonth.DayHeadings)
+                        {
+                            <th scope="col">@heading</th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var week in _month.Weeks)
+                    {
+                        <tr>
+                            @foreach (var day in week)
+                            {
+                                <td>
+                                    @if (day is { } date)
+                                    {
+                                        <button type="button"
+                                                class="date-picker-day @(date == CurrentValue ? "chosen" : "") @(date == Today ? "today" : "")"
+                                                aria-pressed="@(date == CurrentValue ? "true" : "false")"
+                                                @onclick="() => Pick(date)">@date.Day</button>
+                                    }
+                                </td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+
+            <div class="date-picker-footer">
+                <button type="button" class="btn btn-link" @onclick="() => Pick(Today)">Today</button>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>The id for the field, so a label's <c>for</c> can point at it.</summary>
+    [Parameter]
+    public string? Id { get; set; }
+
+    private bool _open;
+    private CalendarMonth _month = CalendarMonth.Of(DateOnly.FromDateTime(DateTime.Now));
+
+    private static DateOnly Today => DateOnly.FromDateTime(DateTime.Now);
+
+    private void Toggle()
+    {
+        _open = !_open;
+
+        if (_open)
+        {
+            // Open on the month of the date already chosen, so correcting it is one click.
+            _month = CalendarMonth.Of(CurrentValue ?? Today);
+        }
+    }
+
+    private void Pick(DateOnly date)
+    {
+        CurrentValue = date;
+        _open = false;
+    }
+
+    /// <summary>Never parsed from text: the only way in is picking a day.</summary>
+    protected override bool TryParseValueFromString(string? value, out DateOnly? result, [NotNullWhen(false)] out string? validationErrorMessage)
+    {
+        result = CurrentValue;
+        validationErrorMessage = null;
+
+        return true;
+    }
+}
