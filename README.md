@@ -112,6 +112,29 @@ A Stack adds Copies without stopping to ask, so those arrive with only the press
 against them. Condition and price are the facts nothing can look up, so a record's own
 page can edit them back in afterwards.
 
+## Playing out
+
+Record each Gig you play (a date, and optionally a venue and notes), then what you
+played at it, one Selection at a time, in running order. Selections are usually seven
+records, but nothing insists on it. A Gig can be entered on the night or long after; it
+takes its place by the date it was played.
+
+The Collection then shows how often each record has been played and where last, and flags
+Repeats: anything played at your last Gig most pointedly, and anything played at one of
+the last three more gently. "Hide recent repeats" on the Collection leaves them out, for
+pulling records for the next Gig. Pressings of the same Master count as one record, so a
+reissue is a Repeat of the original. Repeats are flagged, never refused.
+
+The window is counted in Gigs rather than weeks, and can be widened:
+
+```bash
+Gigs__RepeatWindow=5 dotnet run --project src/SevenBySeven.AppHost
+```
+
+Removing a record you have played keeps it against the Gigs it was played at, as a Former
+Copy, rather than deleting it; [ADR 0006](./docs/adr/0006-a-played-copy-is-never-deleted.md)
+explains why.
+
 ## Layout
 
 ```
@@ -123,6 +146,7 @@ src/Modules/…Scanning             camera capture and photo intake, one record 
 src/Modules/…Identification       barcode decode, sleeve reading, Discogs search
 src/Modules/…Catalogue            Release and Track — cached Discogs data
 src/Modules/…Collection           Copy — the records I own, and the pages for browsing them
+src/Modules/…Gigs                 Gig, Selection and Play — what I played, and Repeats
 tests/SevenBySeven.Tests          unit tests, plus Aspire integration test support
 scripts                           the coverage gate CI and you both run
 ```

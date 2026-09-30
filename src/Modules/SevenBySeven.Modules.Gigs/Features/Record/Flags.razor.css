@@ -1,0 +1,19 @@
+.gig-flag {
+    flex-shrink: 0;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: 0.25rem;
+    padding: 0.15rem 0.4rem;
+    white-space: nowrap;
+}
+
+.gig-flag-lastgig {
+    color: #842029;
+    background: #f8d7da;
+}
+
+.gig-flag-recent,
+.gig-flag-thisgig {
+    color: #664d03;
+    background: #fff3cd;
+}

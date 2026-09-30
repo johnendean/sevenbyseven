@@ -5,7 +5,9 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using SevenBySeven.Modules.Catalogue;
 using SevenBySeven.Modules.Catalogue.Domain;
+using Microsoft.Extensions.Options;
 using SevenBySeven.Modules.Collection;
+using SevenBySeven.Modules.Gigs;
 using SevenBySeven.Shared.Modularity;
 using SevenBySeven.Shared.Persistence;
 
@@ -20,7 +22,7 @@ namespace SevenBySeven.Tests;
 internal sealed class TestDatabase : IAsyncDisposable
 {
     private static readonly IModule[] Modules =
-        [new CatalogueModule(), new CollectionModule(), new SqliteQuirks()];
+        [new CatalogueModule(), new CollectionModule(), new GigsModule(), new SqliteQuirks()];
 
     private readonly SqliteConnection _connection;
 
@@ -75,6 +77,10 @@ internal sealed class TestDatabase : IAsyncDisposable
 
         return release;
     }
+
+    /// <summary>The real play history over a context, with the Repeat window as configured.</summary>
+    public static IPlayHistory PlayHistory(SevenBySevenDbContext context, int repeatWindow = GigsOptions.DefaultRepeatWindow) =>
+        new PlayHistory(context, Options.Create(new GigsOptions { RepeatWindow = repeatWindow }));
 
     public async ValueTask DisposeAsync() => await _connection.DisposeAsync();
 

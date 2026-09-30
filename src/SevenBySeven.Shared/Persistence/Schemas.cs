@@ -8,4 +8,5 @@ public static class Schemas
 {
     public const string Catalogue = "catalogue";
     public const string Collection = "collection";
+    public const string Gigs = "gigs";
 }

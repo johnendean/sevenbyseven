@@ -8,6 +8,7 @@
   <Folder Name="/src/Modules/">
     <Project Path="src/Modules/SevenBySeven.Modules.Catalogue/SevenBySeven.Modules.Catalogue.csproj" />
     <Project Path="src/Modules/SevenBySeven.Modules.Collection/SevenBySeven.Modules.Collection.csproj" />
+    <Project Path="src/Modules/SevenBySeven.Modules.Gigs/SevenBySeven.Modules.Gigs.csproj" />
     <Project Path="src/Modules/SevenBySeven.Modules.Identification/SevenBySeven.Modules.Identification.csproj" />
     <Project Path="src/Modules/SevenBySeven.Modules.Scanning/SevenBySeven.Modules.Scanning.csproj" />
   </Folder>

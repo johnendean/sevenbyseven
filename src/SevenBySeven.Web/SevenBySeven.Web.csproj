@@ -6,6 +6,7 @@
     <ProjectReference Include="..\Modules\SevenBySeven.Modules.Identification\SevenBySeven.Modules.Identification.csproj" />
     <ProjectReference Include="..\Modules\SevenBySeven.Modules.Catalogue\SevenBySeven.Modules.Catalogue.csproj" />
     <ProjectReference Include="..\Modules\SevenBySeven.Modules.Collection\SevenBySeven.Modules.Collection.csproj" />
+    <ProjectReference Include="..\Modules\SevenBySeven.Modules.Gigs\SevenBySeven.Modules.Gigs.csproj" />
   </ItemGroup>
 
   <ItemGroup>

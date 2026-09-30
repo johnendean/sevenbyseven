@@ -1,0 +1,304 @@
+@page "/gigs/{Id:guid}"
+@rendermode InteractiveServer
+@inject IGigLog Gigs
+@inject NavigationManager Navigation
+@inject ILogger<GigPage> Logger
+
+<PageTitle>@(_gig is null ? "A gig" : Title(_gig))</PageTitle>
+
+@if (_gig is null)
+{
+    <h1>No such gig</h1>
+    <p class="gig-meta">@(_loaded ? "It may already have been deleted." : "Looking it up…")</p>
+    <p><a class="btn btn-secondary" href="gigs">Back to gigs</a></p>
+}
+else
+{
+    <h1>@Title(_gig)</h1>
+
+    @if (_editing)
+    {
+        <EditForm Model="_form" OnValidSubmit="SaveDetails" class="gig-details">
+            <DataAnnotationsValidator />
+            <GigDetailsFields Form="_form" />
+            <button type="submit" class="btn btn-primary" disabled="@_busy">Save</button>
+            <button type="button" class="btn btn-secondary" @onclick="() => _editing = false">Cancel</button>
+        </EditForm>
+    }
+    else
+    {
+        @if (_gig.Notes is { Length: > 0 } notes)
+        {
+            <p class="gig-notes">@notes</p>
+        }
+        <p class="gig-meta">
+            @(_gig.Plays == 1 ? "1 record" : $"{_gig.Plays} records") played.
+            <button class="btn btn-link btn-sm p-0 align-baseline" @onclick="StartEdit">Edit date, venue or notes</button>
+        </p>
+    }
+
+    @if (_error is not null)
+    {
+        <div class="alert alert-danger" role="alert">@_error</div>
+    }
+
+    @foreach (var selection in _gig.Selections)
+    {
+        <section class="gig-selection">
+            <h2>
+                Selection @selection.Number
+                <small>@(selection.Plays.Count == 1 ? "1 record" : $"{selection.Plays.Count} records")</small>
+            </h2>
+
+            @if (selection.Plays.Count > 0)
+            {
+                <ol class="gig-plays">
+                    @foreach (var play in selection.Plays)
+                    {
+                        <li class="gig-play">
+                            @if (play.Release.ThumbnailUrl is { Length: > 0 } thumbnail)
+                            {
+                                <img src="@thumbnail" alt="" loading="lazy" />
+                            }
+                            else
+                            {
+                                <span class="gig-sleeve-missing" aria-hidden="true"></span>
+                            }
+
+                            <span class="gig-play-detail">
+                                @if (play.IsFormer)
+                                {
+                                    <strong>@play.Release.ArtistName &mdash; @play.Release.Title</strong>
+                                    <span>No longer in your collection</span>
+                                }
+                                else
+                                {
+                                    <a href="collection/@play.CopyId"><strong>@play.Release.ArtistName &mdash; @play.Release.Title</strong></a>
+                                    <span>@play.Release.Pressing</span>
+                                }
+                            </span>
+
+                            <Flags Repeat="play.Repeat" ThisGig="play.PlayedEarlierThisGig" ThisGigText="Played earlier tonight" />
+
+                            <span class="gig-play-actions">
+                                <button class="btn btn-sm btn-outline-secondary" title="Earlier" disabled="@(_busy || play.Number == 1)"
+                                        @onclick="() => Change(() => Gigs.MovePlayAsync(Id, play.Id, earlier: true))">&uarr;</button>
+                                <button class="btn btn-sm btn-outline-secondary" title="Later" disabled="@(_busy || play.Number == selection.Plays.Count)"
+                                        @onclick="() => Change(() => Gigs.MovePlayAsync(Id, play.Id, earlier: false))">&darr;</button>
+                                <button class="btn btn-sm btn-outline-danger" title="Take it out" disabled="@_busy"
+                                        @onclick="() => Change(() => Gigs.RemovePlayAsync(Id, play.Id))">&times;</button>
+                            </span>
+                        </li>
+                    }
+                </ol>
+            }
+
+            @if (_addingTo == selection.Id)
+            {
+                <div class="gig-search">
+                    <input class="form-control" placeholder="Artist, title, label or catalogue number"
+                           @bind="_search" @bind:event="oninput" autofocus />
+
+                    <ul class="gig-candidates">
+                        @foreach (var candidate in Matching())
+                        {
+                            var release = candidate.Copy.Release!;
+                            <li>
+                                <span class="gig-play-detail">
+                                    <strong>@release.ArtistName &mdash; @release.Title</strong>
+                                    <span>@release.Pressing</span>
+                                </span>
+                                <Flags Repeat="candidate.Repeat" ThisGig="candidate.PlayedThisGig" ThisGigText="Already played tonight" />
+                                <button class="btn btn-sm btn-primary" disabled="@_busy"
+                                        @onclick="() => Change(() => Gigs.AddPlayAsync(Id, selection.Id, candidate.Copy.Id), keepSearching: true)">Add</button>
+                            </li>
+                        }
+                    </ul>
+
+                    @if (!string.IsNullOrWhiteSpace(_search) && !Matching().Any())
+                    {
+                        <p class="gig-meta">Nothing in your collection matches that.</p>
+                    }
+
+                    <button class="btn btn-secondary btn-sm" @onclick="StopAdding">Done adding</button>
+                </div>
+            }
+            else
+            {
+                <div class="gig-selection-actions">
+                    <button class="btn btn-outline-primary btn-sm" @onclick="() => StartAdding(selection.Id)">Add a record</button>
+                    @if (_confirmingSelectionRemoval == selection.Id)
+                    {
+                        <button class="btn btn-danger btn-sm" disabled="@_busy"
+                                @onclick="() => Change(() => Gigs.RemoveSelectionAsync(Id, selection.Id))">Yes, remove this selection</button>
+                        <button class="btn btn-link btn-sm" @onclick="() => _confirmingSelectionRemoval = null">Keep it</button>
+                    }
+                    else
+                    {
+                        <button class="btn btn-link btn-sm text-danger" @onclick="() => _confirmingSelectionRemoval = selection.Id">Remove selection</button>
+                    }
+                </div>
+            }
+        </section>
+    }
+
+    <p>
+        <button class="btn btn-outline-primary" disabled="@_busy" @onclick="() => Change(() => Gigs.AddSelectionAsync(Id))">
+            Start another selection
+        </button>
+    </p>
+
+    <div class="gig-actions">
+        <a class="btn btn-secondary" href="gigs">Back to gigs</a>
+
+        @if (_confirmingDelete)
+        {
+            <button class="btn btn-danger" disabled="@_busy" @onclick="Delete">Yes, delete this gig</button>
+            <button class="btn btn-link" @onclick="() => _confirmingDelete = false">Keep it</button>
+        }
+        else
+        {
+            <button class="btn btn-outline-danger" @onclick="() => _confirmingDelete = true">Delete gig</button>
+        }
+    </div>
+
+    @if (_confirmingDelete)
+    {
+        <p class="gig-meta">
+            Everything recorded as played at this gig goes with it, and stops counting towards
+            how often a record has been played.
+        </p>
+    }
+}
+
+@code {
+    /// <summary>More than this and the list stops being a shortlist; typing more narrows it.</summary>
+    private const int MostShown = 12;
+
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private GigSheet? _gig;
+    private IReadOnlyList<Candidate> _candidates = [];
+    private bool _loaded;
+    private bool _busy;
+    private string? _error;
+
+    private GigForm _form = new();
+    private bool _editing;
+
+    private Guid? _addingTo;
+    private string? _search;
+
+    private Guid? _confirmingSelectionRemoval;
+    private bool _confirmingDelete;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await Reload();
+        _loaded = true;
+    }
+
+    private async Task Reload()
+    {
+        _gig = await Gigs.FindAsync(Id);
+        _candidates = _gig is null ? [] : await Gigs.CandidatesAsync(Id);
+    }
+
+    private IEnumerable<Candidate> Matching() =>
+        _candidates.Where(candidate => CopySearch.Matches(candidate.Copy.Release!, _search)).Take(MostShown);
+
+    private void StartAdding(Guid selectionId)
+    {
+        _addingTo = selectionId;
+        _search = null;
+    }
+
+    private void StopAdding()
+    {
+        _addingTo = null;
+        _search = null;
+    }
+
+    private void StartEdit()
+    {
+        _form = GigForm.For(_gig!);
+        _editing = true;
+    }
+
+    private async Task SaveDetails()
+    {
+        await Change(() => Gigs.UpdateAsync(Id, _form.ToDetails()));
+        _editing = _error is not null;
+    }
+
+    /// <summary>
+    /// Makes one change and reads the Gig back, since a change anywhere can move a flag
+    /// somewhere else. False from the log means what the page showed has gone.
+    /// </summary>
+    private async Task Change(Func<Task<bool>> change, bool keepSearching = false)
+    {
+        if (_busy)
+        {
+            return;
+        }
+
+        _busy = true;
+        _error = null;
+
+        try
+        {
+            if (!await change())
+            {
+                _error = "That has changed since the page was loaded, so it has been read again.";
+            }
+
+            await Reload();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Changing gig {GigId} failed.", Id);
+            _error = "That could not be saved. The database may be unreachable.";
+        }
+        finally
+        {
+            _busy = false;
+            _confirmingSelectionRemoval = null;
+
+            if (!keepSearching)
+            {
+                StopAdding();
+            }
+        }
+    }
+
+    private async Task Delete()
+    {
+        if (_busy)
+        {
+            return;
+        }
+
+        _busy = true;
+
+        try
+        {
+            await Gigs.DeleteAsync(Id);
+            Navigation.NavigateTo("gigs");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Deleting gig {GigId} failed.", Id);
+            _error = "The gig could not be deleted. The database may be unreachable.";
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private static string Title(GigSheet gig) =>
+        gig.Venue is { Length: > 0 } venue
+            ? $"{gig.PlayedOn:d MMMM yyyy} — {venue}"
+            : gig.PlayedOn.ToString("d MMMM yyyy");
+}

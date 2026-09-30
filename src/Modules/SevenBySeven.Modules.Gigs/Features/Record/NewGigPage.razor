@@ -1,0 +1,62 @@
+@page "/gigs/new"
+@rendermode InteractiveServer
+@inject IGigLog Gigs
+@inject NavigationManager Navigation
+@inject ILogger<NewGigPage> Logger
+
+<PageTitle>Record a gig</PageTitle>
+
+<h1>Record a gig</h1>
+
+<p class="gig-meta">
+    A gig can be recorded on the night or long afterwards. Once it is here, add what you
+    played, one selection at a time.
+</p>
+
+<EditForm Model="_form" OnValidSubmit="Create">
+    <DataAnnotationsValidator />
+
+    <GigDetailsFields Form="_form" />
+
+    @if (_error is not null)
+    {
+        <div class="alert alert-danger" role="alert">@_error</div>
+    }
+
+    <button type="submit" class="btn btn-primary" disabled="@_saving">
+        @(_saving ? "Saving…" : "Record it")
+    </button>
+    <a class="btn btn-secondary" href="gigs">Cancel</a>
+</EditForm>
+
+@code {
+    private readonly GigForm _form = GigForm.Tonight(DateOnly.FromDateTime(DateTime.Now));
+    private bool _saving;
+    private string? _error;
+
+    private async Task Create()
+    {
+        if (_saving)
+        {
+            return;
+        }
+
+        _saving = true;
+        _error = null;
+
+        try
+        {
+            var gig = await Gigs.CreateAsync(_form.ToDetails());
+            Navigation.NavigateTo($"gigs/{gig.Id}");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Recording a gig failed.");
+            _error = "The gig could not be saved. The database may be unreachable.";
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+}

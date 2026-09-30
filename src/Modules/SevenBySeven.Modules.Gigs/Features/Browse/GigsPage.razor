@@ -1,0 +1,51 @@
+@page "/gigs"
+@inject IGigLog Gigs
+
+<PageTitle>Gigs</PageTitle>
+
+<h1>Gigs</h1>
+
+@if (_gigs is null)
+{
+    <p class="gig-meta">Reading the diary&hellip;</p>
+}
+else if (_gigs.Count == 0)
+{
+    <p>No gigs recorded yet.</p>
+    <p class="gig-meta">
+        Record what you played at each gig, and your collection will show how often each
+        record has been played and flag anything played at your last few gigs.
+    </p>
+}
+else
+{
+    <p class="gig-meta">@(_gigs.Count == 1 ? "1 gig" : $"{_gigs.Count} gigs")</p>
+
+    <ul class="gig-list">
+        @foreach (var gig in _gigs)
+        {
+            <li>
+                <a href="gigs/@gig.Id">
+                    <strong>@gig.PlayedOn.ToString("d MMMM yyyy")@(gig.Venue is { Length: > 0 } venue ? $" — {venue}" : "")</strong>
+                    <span>@Played(gig)</span>
+                </a>
+            </li>
+        }
+    </ul>
+}
+
+<p><a class="btn btn-primary" href="gigs/new">Record a gig</a></p>
+
+@code {
+    private IReadOnlyList<GigSummary>? _gigs;
+
+    protected override async Task OnInitializedAsync() => _gigs = await Gigs.ListAsync();
+
+    private static string Played(GigSummary gig)
+    {
+        var records = gig.Plays == 1 ? "1 record" : $"{gig.Plays} records";
+        var selections = gig.Selections == 1 ? "1 selection" : $"{gig.Selections} selections";
+
+        return $"{records} in {selections}";
+    }
+}

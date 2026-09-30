@@ -1,6 +1,7 @@
 using System.Reflection;
 using SevenBySeven.Modules.Catalogue;
 using SevenBySeven.Modules.Collection;
+using SevenBySeven.Modules.Gigs;
 using SevenBySeven.Modules.Identification;
 using SevenBySeven.Modules.Scanning;
 using SevenBySeven.Shared.Modularity;
@@ -17,6 +18,7 @@ internal static class ModuleCatalog
     [
         new CatalogueModule(),
         new CollectionModule(),
+        new GigsModule(),
         new IdentificationModule(),
         new ScanningModule(),
     ];

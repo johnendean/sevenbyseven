@@ -1,5 +1,6 @@
 @page "/collection"
 @inject IVinylCollection Collection
+@inject IPlayHistory Plays
 
 <PageTitle>My collection</PageTitle>
 
@@ -20,11 +21,23 @@ else if (_copies.Count == 0)
 }
 else
 {
-    <p class="collection-meta">@Counted(_copies.Count)</p>
+    <p class="collection-meta">
+        @Counted(_copies.Count)
+        @if (HidingRepeats)
+        {
+            <text> &middot; @Hidden() &middot; <a href="collection">Show everything</a></text>
+        }
+        else
+        {
+            <text> &middot; <a href="collection?hide=repeats">Hide recent repeats</a></text>
+        }
+    </p>
 
     <ul class="copy-list">
-        @foreach (var copy in _copies)
+        @foreach (var copy in Shown())
         {
+            var standing = _standings[copy.Id];
+
             <li class="copy">
                 <a class="copy-link" href="collection/@copy.Id">
                     @if (copy.Release?.ThumbnailUrl is { Length: > 0 } thumbnail)
@@ -39,8 +52,18 @@ else
                     <span class="copy-detail">
                         <strong>@copy.Release?.ArtistName &mdash; @copy.Release?.Title</strong>
                         <span>@copy.Release?.Pressing</span>
+                        @if (standing.TimesPlayed > 0)
+                        {
+                            <span>@standing.Describe()</span>
+                        }
                     </span>
                 </a>
+
+                @if (standing.Repeat is not Repeat.None)
+                {
+                    <span class="copy-repeat copy-repeat-@standing.Repeat.ToString().ToLowerInvariant()"
+                          title="@standing.Repeat.Describe()">@standing.Repeat.Abbreviation()</span>
+                }
 
                 @if (copy.MediaCondition is { } grade)
                 {
@@ -54,9 +77,31 @@ else
 }
 
 @code {
-    private IReadOnlyList<Copy>? _copies;
+    /// <summary>"repeats" leaves out anything played at a recent Gig, for choosing what to take to the next one.</summary>
+    [SupplyParameterFromQuery(Name = "hide")]
+    public string? Hide { get; set; }
 
-    protected override async Task OnInitializedAsync() => _copies = await Collection.ListAsync();
+    private IReadOnlyList<Copy>? _copies;
+    private IReadOnlyDictionary<Guid, PlayStanding> _standings = new Dictionary<Guid, PlayStanding>();
+
+    private bool HidingRepeats => string.Equals(Hide, "repeats", StringComparison.OrdinalIgnoreCase);
+
+    protected override async Task OnInitializedAsync()
+    {
+        var copies = await Collection.ListAsync();
+        _standings = await Plays.StandingsAsync([.. copies.Select(copy => copy.Id)]);
+        _copies = copies;
+    }
+
+    private IEnumerable<Copy> Shown() =>
+        HidingRepeats ? _copies!.Where(copy => _standings[copy.Id].Repeat is Repeat.None) : _copies!;
+
+    private string Hidden()
+    {
+        var hidden = _copies!.Count - Shown().Count();
+
+        return hidden == 1 ? "1 recent repeat hidden" : $"{hidden} recent repeats hidden";
+    }
 
     private static string Counted(int count) => count == 1 ? "1 record" : $"{count} records";
 }

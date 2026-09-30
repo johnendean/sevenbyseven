@@ -1,6 +1,7 @@
 @page "/collection/{Id:guid}"
 @rendermode InteractiveServer
 @inject IVinylCollection Collection
+@inject IPlayHistory Plays
 @inject NavigationManager Navigation
 @inject ILogger<CopyPage> Logger
 
@@ -194,6 +195,19 @@ else
 
             <button class="btn btn-outline-secondary" @onclick="StartEdit">Edit these details</button>
             }
+
+            <h2>Played out</h2>
+            <p>
+                @_standing.Describe()
+                @if (_standing.LastPlayed is { } last)
+                {
+                    <a href="gigs/@last.GigId">See that gig</a>
+                }
+            </p>
+            @if (_standing.Repeat is not Repeat.None)
+            {
+                <p class="copy-meta">@_standing.Repeat.Describe(), so it would be a repeat at the next one.</p>
+            }
         </div>
     </div>
 
@@ -250,6 +264,10 @@ else
         <p class="copy-meta">
             This removes your copy. The pressing stays in the catalogue, so adding it again
             costs nothing.
+            @if (_standing.TimesPlayed > 0)
+            {
+                <text>Gigs it was played at will still show it, as a record you no longer own.</text>
+            }
         </p>
     }
 }
@@ -259,6 +277,7 @@ else
     public Guid Id { get; set; }
 
     private Copy? _copy;
+    private PlayStanding _standing = PlayStanding.NeverPlayed;
     private CopyForm _form = new();
     private bool _editing;
     private bool _saving;
@@ -272,6 +291,7 @@ else
     protected override async Task OnParametersSetAsync()
     {
         _copy = await Collection.FindAsync(Id);
+        _standing = (await Plays.StandingsAsync([Id]))[Id];
         _loaded = true;
         _showsBpm = _copy?.Release?.Tracks.Any(track => track.Bpm is not null) ?? false;
     }
