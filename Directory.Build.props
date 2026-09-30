@@ -1,4 +1,11 @@
 <Project>
+  <PropertyGroup Label="Compiler warnings">
+    <!-- Compiler and analyser warnings fail the build. This deliberately stops short of
+         MSBuildTreatWarningsAsErrors: the missing Six Labors licence is an MSBuild warning
+         in Debug by design, so a clone without the key can still build. -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
   <PropertyGroup Label="Six Labors licensing">
     <!-- ImageSharp's licence check globs **/sixlabors.lic relative to the project being
          built, so a key at the repository root is invisible to projects under src/.
