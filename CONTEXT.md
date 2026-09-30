@@ -10,6 +10,10 @@ A personal catalogue of the vinyl records I own. A record is added by photograph
 A single physical record I own. Two identical pressings sitting on my shelf are two Copies.
 _Avoid_: Item, Record, Album, Disc
 
+**Former Copy**:
+A Copy I no longer own but have played, kept so that the Gigs it was played at still read correctly. It is not part of the Collection.
+_Avoid_: Deleted, Archived, Sold, Removed
+
 **Release**:
 A specific pressing as catalogued externally — a particular label, catalogue number, country, year and format. "Columbia CS 8163, US, 1959, stereo" is a Release. Many Copies may share one Release.
 _Avoid_: Pressing, Edition, Version, Variant
@@ -57,3 +61,21 @@ _Avoid_: Cache, Metadata, Reference Data
 **BPM**:
 The tempo of a Track. It is a property of the recording, so it is held once on the Track and shared by every Copy of that Release. It is optional, and may be absent, entered by hand, or supplied by a source that is recorded alongside it.
 _Avoid_: Tempo, Beats, Speed
+
+### Playing out
+
+**Gig**:
+One occasion on which I DJ, on a given date and perhaps at a named venue. A Gig may be entered after the fact, even long after, and holds one or more Selections in the order they were played.
+_Avoid_: Event, Show, Booking, Night
+
+**Selection**:
+One run of records played back to back within a Gig, in running order — usually seven, but not required to be. Only records actually played belong to it; one taken along and not played does not.
+_Avoid_: Set, Mix, Batch, Crate
+
+**Play**:
+One of my Copies being played within a Selection; a record I do not own cannot be a Play. A Play is recorded against the physical Copy, but whether something was played recently, and how often it has been played, is judged across every Copy of the same Master — or of the same Release when no Master is known.
+_Avoid_: Spin, Airing, Use
+
+**Repeat**:
+A record that has been played at one of my most recent Gigs, regardless of venue: most pointedly at the last Gig, less so within the last few. A Repeat is flagged, never refused — bringing a record back can be deliberate.
+_Avoid_: Duplicate, Overplay, Clash
