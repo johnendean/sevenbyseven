@@ -10,11 +10,13 @@
 <div class="gig-field">
     <label class="form-label" for="venue">Venue</label>
     <InputText id="venue" class="form-control" @bind-Value="Form.Venue" />
+    <ValidationMessage For="() => Form.Venue" />
 </div>
 
 <div class="gig-field">
     <label class="form-label" for="notes">Notes</label>
     <InputTextArea id="notes" class="form-control" rows="3" @bind-Value="Form.Notes" />
+    <ValidationMessage For="() => Form.Notes" />
 </div>
 
 @code {

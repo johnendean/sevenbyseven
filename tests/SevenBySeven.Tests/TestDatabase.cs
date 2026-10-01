@@ -1,5 +1,6 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -46,11 +47,12 @@ internal sealed class TestDatabase : IAsyncDisposable
     /// A fresh context over the same database — what a later request would see, with
     /// nothing left in the change tracker to flatter the result.
     /// </summary>
-    public SevenBySevenDbContext NewContext() =>
+    public SevenBySevenDbContext NewContext(params IInterceptor[] interceptors) =>
         new(
             new DbContextOptionsBuilder<SevenBySevenDbContext>()
                 .UseSqlite(_connection)
                 .UseSnakeCaseNamingConvention()
+                .AddInterceptors(interceptors)
                 .Options,
             Modules);
 

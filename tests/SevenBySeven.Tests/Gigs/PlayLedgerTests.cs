@@ -139,6 +139,18 @@ public class PlayLedgerTests
     }
 
     [Fact]
+    public void A_play_at_a_gig_the_ledger_never_read_is_left_out()
+    {
+        // Gigs and Plays are read separately; another tab can record a Gig and its first
+        // Play in between, leaving a Play whose Gig is missing.
+        var known = Gig(1);
+        var ledger = new PlayLedger([known], [PlayAt(Gig(2), KindOfBlue)], window: 3);
+
+        Assert.Same(PlayStanding.NeverPlayed, ledger.StandingOf(KindOfBlue));
+        Assert.Equal(Repeat.None, ledger.RepeatAt(KindOfBlue, known.Id));
+    }
+
+    [Fact]
     public void Two_pressings_of_one_master_are_the_same_record()
     {
         Assert.Equal(SameRecord.Of(5460, Guid.CreateVersion7()), SameRecord.Of(5460, Guid.CreateVersion7()));

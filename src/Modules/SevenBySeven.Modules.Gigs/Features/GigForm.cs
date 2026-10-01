@@ -12,10 +12,10 @@ public sealed class GigForm
     [Required(ErrorMessage = "A gig needs the date it was played.")]
     public DateOnly? PlayedOn { get; set; }
 
-    [StringLength(200)]
+    [StringLength(200, ErrorMessage = "A venue can be at most 200 characters.")]
     public string? Venue { get; set; }
 
-    [StringLength(4000)]
+    [StringLength(4000, ErrorMessage = "Notes can be at most 4,000 characters.")]
     public string? Notes { get; set; }
 
     /// <summary>A new Gig, dated today because that is when most are entered.</summary>

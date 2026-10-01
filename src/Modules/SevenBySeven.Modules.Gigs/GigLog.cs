@@ -103,7 +103,7 @@ internal sealed class GigLog(SevenBySevenDbContext database, IOptions<GigsOption
         gig.AddSelection();
 
         database.Add(gig);
-        await database.SaveChangesAsync(cancellationToken);
+        await SaveAsync(cancellationToken);
 
         return gig;
     }
@@ -132,7 +132,7 @@ internal sealed class GigLog(SevenBySevenDbContext database, IOptions<GigsOption
         }
 
         database.Remove(gig);
-        await database.SaveChangesAsync(cancellationToken);
+        await SaveAsync(cancellationToken);
 
         return true;
     }
@@ -182,12 +182,44 @@ internal sealed class GigLog(SevenBySevenDbContext database, IOptions<GigsOption
 
         if (gig is null || !change(gig))
         {
+            LetGo();
+
             return false;
         }
 
-        await database.SaveChangesAsync(cancellationToken);
+        await SaveAsync(cancellationToken);
 
         return true;
+    }
+
+    /// <summary>
+    /// Saves, then lets go of every Gig, Selection and Play whether or not the save took.
+    /// The context lives as long as the circuit: a failed write left tracked would be
+    /// written by the next unrelated save, and a Gig left tracked would be handed back
+    /// stale the next time it is loaded to change, whatever another tab has done since.
+    /// </summary>
+    private async Task SaveAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await database.SaveChangesAsync(cancellationToken);
+        }
+        finally
+        {
+            LetGo();
+        }
+    }
+
+    private void LetGo()
+    {
+        var mine = database.ChangeTracker.Entries()
+            .Where(entry => entry.Entity is Gig or Selection or Play)
+            .ToList();
+
+        foreach (var entry in mine)
+        {
+            entry.State = EntityState.Detached;
+        }
     }
 
     /// <summary>Tracked, unlike every read above: this one is going to be written back.</summary>

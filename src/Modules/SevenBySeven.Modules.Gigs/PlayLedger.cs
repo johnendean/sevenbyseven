@@ -20,7 +20,12 @@ internal sealed class PlayLedger
     public PlayLedger(IEnumerable<GigFact> gigs, IEnumerable<PlayFact> plays, int window)
     {
         _gigs = [.. gigs.OrderBy(gig => gig.PlayedOn).ThenBy(gig => gig.Id)];
-        _playsByRecord = plays.ToLookup(play => play.Record);
+
+        // Gigs and Plays are read separately, so a Gig recorded or deleted in another tab
+        // between the two reads can leave Plays whose Gig is not here. They are left out:
+        // a Play the ledger cannot place in time can say nothing about recency.
+        var known = _gigs.Select(gig => gig.Id).ToHashSet();
+        _playsByRecord = plays.Where(play => known.Contains(play.GigId)).ToLookup(play => play.Record);
         _window = Math.Max(1, window);
     }
 

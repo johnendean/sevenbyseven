@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using SevenBySeven.Modules.Collection.Domain;
 using SevenBySeven.Modules.Gigs.Domain;
 
@@ -25,6 +26,46 @@ public class GigLogTests
         Assert.Equal("The Social", sheet.Venue);
         Assert.Null(sheet.Notes);
         Assert.Equal(1, Assert.Single(sheet.Selections).Number);
+    }
+
+    [Fact]
+    public async Task A_gig_that_failed_to_save_is_not_saved_by_the_next_attempt()
+    {
+        // The context lives as long as the circuit, so a failed write left tracked would be
+        // written by whatever saved next — retrying would record the Gig twice.
+        await using var database = await TestDatabase.CreateAsync();
+        await using var context = database.NewContext(new FailsFirstSave());
+        var log = Shelf.Log(context);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => log.CreateAsync(new GigDetails { PlayedOn = September26, Venue = "First try" }));
+        await log.CreateAsync(new GigDetails { PlayedOn = September26, Venue = "Second try" });
+
+        await using var later = database.NewContext();
+        var gig = await later.Set<Gig>().SingleAsync();
+
+        Assert.Equal("Second try", gig.Venue);
+        Assert.Equal(1, await later.Set<Selection>().CountAsync());
+    }
+
+    [Fact]
+    public async Task A_change_that_failed_to_save_is_not_saved_by_the_next_one()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var failing = new FailsFirstSave { Armed = false };
+        await using var context = database.NewContext(failing);
+        var log = Shelf.Log(context);
+        var gig = await log.CreateAsync(new GigDetails { PlayedOn = September26 });
+
+        failing.Armed = true;
+        await Assert.ThrowsAsync<InvalidOperationException>(() => log.AddSelectionAsync(gig.Id));
+        Assert.True(await log.UpdateAsync(gig.Id, new GigDetails { PlayedOn = September26, Venue = "The Social" }));
+
+        await using var later = database.NewContext();
+        var sheet = (await Shelf.Log(later).FindAsync(gig.Id))!;
+
+        Assert.Equal("The Social", sheet.Venue);
+        Assert.Single(sheet.Selections);
     }
 
     [Fact]
@@ -244,5 +285,25 @@ public class GigLogTests
         Assert.Null(await Shelf.Log(later).FindAsync(gig.Id));
         Assert.Equal(0, await later.Set<Play>().CountAsync());
         Assert.Equal(1, await later.Set<Copy>().CountAsync());
+    }
+
+    /// <summary>Fails the first save it sees while armed, as an unreachable database would.</summary>
+    private sealed class FailsFirstSave : SaveChangesInterceptor
+    {
+        public bool Armed { get; set; } = true;
+
+        public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
+            DbContextEventData eventData,
+            InterceptionResult<int> result,
+            CancellationToken cancellationToken = default)
+        {
+            if (Armed)
+            {
+                Armed = false;
+                throw new InvalidOperationException("The database went away.");
+            }
+
+            return base.SavingChangesAsync(eventData, result, cancellationToken);
+        }
     }
 }
