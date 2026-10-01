@@ -1,0 +1,25 @@
+@* The fields of a GigForm, for the EditForm around them. Shared by recording a Gig and
+   correcting one, so the two cannot drift apart. *@
+
+<div class="gig-field">
+    <label class="form-label" for="played-on">Played on</label>
+    <DatePicker Id="played-on" @bind-Value="Form.PlayedOn" />
+    <ValidationMessage For="() => Form.PlayedOn" />
+</div>
+
+<div class="gig-field">
+    <label class="form-label" for="venue">Venue</label>
+    <InputText id="venue" class="form-control" @bind-Value="Form.Venue" />
+    <ValidationMessage For="() => Form.Venue" />
+</div>
+
+<div class="gig-field">
+    <label class="form-label" for="notes">Notes</label>
+    <InputTextArea id="notes" class="form-control" rows="3" @bind-Value="Form.Notes" />
+    <ValidationMessage For="() => Form.Notes" />
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public GigForm Form { get; set; } = default!;
+}

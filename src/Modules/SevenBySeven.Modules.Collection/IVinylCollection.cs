@@ -3,7 +3,8 @@ using SevenBySeven.Modules.Collection.Domain;
 namespace SevenBySeven.Modules.Collection;
 
 /// <summary>
-/// The Collection: every Copy I own, and there is exactly one of it. Adding a Copy is
+/// The Collection: every Copy I own, and there is exactly one of it. A Former Copy is
+/// not part of it, so nothing here lists, finds or changes one. Adding a Copy is
 /// what a Confirmation amounts to — the Release it is a copy of must already be held
 /// in the Catalogue, which is what makes the Copy meaningful.
 /// </summary>
@@ -27,8 +28,10 @@ public interface IVinylCollection
     Task<Copy?> FindAsync(Guid copyId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Removes a Copy. The Release stays in the Catalogue: it is cached fact, and I may
-    /// well buy another. False when there was no such Copy to remove.
+    /// Removes a Copy from the Collection. One that has been played at a Gig is kept as a
+    /// Former Copy so those Gigs still read correctly; one that never was is deleted
+    /// (docs/adr/0006). Either way the Release stays in the Catalogue: it is cached fact,
+    /// and I may well buy another. False when there was no such Copy to remove.
     /// </summary>
     Task<bool> RemoveAsync(Guid copyId, CancellationToken cancellationToken = default);
 }

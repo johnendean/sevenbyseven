@@ -5,7 +5,7 @@ using SevenBySeven.Shared.Persistence;
 
 namespace SevenBySeven.Modules.Collection;
 
-internal sealed class VinylCollection(SevenBySevenDbContext database) : IVinylCollection
+internal sealed class VinylCollection(SevenBySevenDbContext database, IPlayHistory plays) : IVinylCollection
 {
     public async Task<Copy> AddAsync(
         Guid releaseId,
@@ -41,7 +41,7 @@ internal sealed class VinylCollection(SevenBySevenDbContext database) : IVinylCo
         ArgumentNullException.ThrowIfNull(details);
 
         // Tracked, unlike every read on this class: this one is going to be written back.
-        var copy = await database.Set<Copy>()
+        var copy = await Owned(database.Set<Copy>())
             .FirstOrDefaultAsync(candidate => candidate.Id == copyId, cancellationToken);
 
         if (copy is null)
@@ -78,7 +78,7 @@ internal sealed class VinylCollection(SevenBySevenDbContext database) : IVinylCo
 
     public async Task<bool> RemoveAsync(Guid copyId, CancellationToken cancellationToken = default)
     {
-        var copy = await database.Set<Copy>()
+        var copy = await Owned(database.Set<Copy>())
             .FirstOrDefaultAsync(candidate => candidate.Id == copyId, cancellationToken);
 
         if (copy is null)
@@ -86,7 +86,18 @@ internal sealed class VinylCollection(SevenBySevenDbContext database) : IVinylCo
             return false;
         }
 
-        database.Remove(copy);
+        // A played Copy is what past Gigs point at, so it is kept as a Former Copy. One
+        // nobody ever played is most likely a wrong scan or a duplicate, and simply goes
+        // (docs/adr/0006).
+        if (await plays.HasBeenPlayedAsync(copyId, cancellationToken))
+        {
+            copy.PartWith(DateTimeOffset.UtcNow);
+        }
+        else
+        {
+            database.Remove(copy);
+        }
+
         await database.SaveChangesAsync(cancellationToken);
 
         return true;
@@ -96,7 +107,11 @@ internal sealed class VinylCollection(SevenBySevenDbContext database) : IVinylCo
     /// Reads are untracked: the context lives as long as the user's circuit, and nothing
     /// displayed on a page is going to be written back through it.
     /// </summary>
-    private IQueryable<Copy> Reading() => database.Set<Copy>().AsNoTracking();
+    private IQueryable<Copy> Reading() => Owned(database.Set<Copy>().AsNoTracking());
+
+    /// <summary>The Collection is the Copies I own, so a Former Copy is never part of it.</summary>
+    private static IQueryable<Copy> Owned(IQueryable<Copy> copies) =>
+        copies.Where(copy => copy.PartedWithOn == null);
 
     /// <summary>ISO 4217 or nothing — three letters, or it is not a currency.</summary>
     private static string? Currency(string? code)

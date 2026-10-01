@@ -1,0 +1,22 @@
+@* The flags against a record on a Gig: whether it is a Repeat of the Gigs before, and
+   whether it is already played in this one. Flagged, never refused. *@
+
+@if (Repeat is not Repeat.None)
+{
+    <span class="gig-flag gig-flag-@Repeat.ToString().ToLowerInvariant()" title="@Repeat.Describe()">@Repeat.Abbreviation()</span>
+}
+@if (ThisGig)
+{
+    <span class="gig-flag gig-flag-thisgig">@ThisGigText</span>
+}
+
+@code {
+    [Parameter]
+    public Repeat Repeat { get; set; }
+
+    [Parameter]
+    public bool ThisGig { get; set; }
+
+    [Parameter]
+    public string ThisGigText { get; set; } = "Played tonight";
+}

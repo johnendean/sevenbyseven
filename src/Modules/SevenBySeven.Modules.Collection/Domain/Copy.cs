@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations.Schema;
 using SevenBySeven.Modules.Catalogue.Domain;
 
 namespace SevenBySeven.Modules.Collection.Domain;
@@ -35,4 +36,16 @@ public sealed class Copy
     public string? Location { get; set; }
 
     public string? Notes { get; set; }
+
+    /// <summary>
+    /// When I parted with this Copy, if I have. A Copy that has been played is kept as a
+    /// Former Copy rather than deleted, so the Gigs it was played at still read correctly
+    /// (docs/adr/0006). A Former Copy is not part of the Collection.
+    /// </summary>
+    public DateTimeOffset? PartedWithOn { get; private set; }
+
+    [NotMapped]
+    public bool IsFormer => PartedWithOn is not null;
+
+    internal void PartWith(DateTimeOffset when) => PartedWithOn = when;
 }

@@ -2,6 +2,8 @@ using Microsoft.EntityFrameworkCore;
 using SevenBySeven.Modules.Catalogue.Domain;
 using SevenBySeven.Modules.Collection;
 using SevenBySeven.Modules.Collection.Domain;
+using SevenBySeven.Modules.Gigs.Domain;
+using SevenBySeven.Shared.Persistence;
 
 namespace SevenBySeven.Tests.Collection;
 
@@ -14,7 +16,7 @@ public class VinylCollectionTests
         var release = await HeldRelease(database);
 
         await using var context = database.NewContext();
-        var copy = await new VinylCollection(context).AddAsync(
+        var copy = await Collection(context).AddAsync(
             release,
             new CopyDetails
             {
@@ -48,7 +50,7 @@ public class VinylCollectionTests
         var release = await HeldRelease(database);
 
         await using var context = database.NewContext();
-        var collection = new VinylCollection(context);
+        var collection = Collection(context);
         var copy = await collection.AddAsync(release, CopyDetails.Unknown);
 
         var updated = await collection.UpdateAsync(copy.Id, new CopyDetails
@@ -76,7 +78,7 @@ public class VinylCollectionTests
         var release = await HeldRelease(database);
 
         await using var context = database.NewContext();
-        var collection = new VinylCollection(context);
+        var collection = Collection(context);
         var copy = await collection.AddAsync(
             release, new CopyDetails { PricePaid = 30m, PricePaidCurrency = "GBP" });
 
@@ -97,7 +99,7 @@ public class VinylCollectionTests
 
         await using var context = database.NewContext();
 
-        Assert.False(await new VinylCollection(context)
+        Assert.False(await Collection(context)
             .UpdateAsync(Guid.CreateVersion7(), CopyDetails.Unknown));
     }
 
@@ -108,7 +110,7 @@ public class VinylCollectionTests
         await using var context = database.NewContext();
 
         await Assert.ThrowsAsync<ArgumentNullException>(
-            () => new VinylCollection(context).UpdateAsync(Guid.CreateVersion7(), null!));
+            () => Collection(context).UpdateAsync(Guid.CreateVersion7(), null!));
     }
 
     [Fact]
@@ -118,7 +120,7 @@ public class VinylCollectionTests
         var release = await HeldRelease(database);
 
         await using var context = database.NewContext();
-        var collection = new VinylCollection(context);
+        var collection = Collection(context);
 
         var first = await collection.AddAsync(release, CopyDetails.Unknown);
         var second = await collection.AddAsync(release, CopyDetails.Unknown);
@@ -136,7 +138,7 @@ public class VinylCollectionTests
         var release = await HeldRelease(database);
 
         await using var context = database.NewContext();
-        var copy = await new VinylCollection(context).AddAsync(
+        var copy = await Collection(context).AddAsync(
             release, new CopyDetails { PricePaidCurrency = "GBP" });
 
         Assert.Null(copy.PricePaid);
@@ -156,7 +158,7 @@ public class VinylCollectionTests
         var release = await HeldRelease(database);
 
         await using var context = database.NewContext();
-        var copy = await new VinylCollection(context).AddAsync(
+        var copy = await Collection(context).AddAsync(
             release, new CopyDetails { PricePaid = 12m, PricePaidCurrency = given });
 
         Assert.Equal(expected, copy.PricePaidCurrency);
@@ -169,7 +171,7 @@ public class VinylCollectionTests
         var release = await HeldRelease(database);
 
         await using var context = database.NewContext();
-        var copy = await new VinylCollection(context).AddAsync(
+        var copy = await Collection(context).AddAsync(
             release, new CopyDetails { PurchasedFrom = "   ", Location = "", Notes = " \t " });
 
         Assert.Null(copy.PurchasedFrom);
@@ -184,7 +186,7 @@ public class VinylCollectionTests
         var release = await HeldRelease(database);
 
         await using var context = database.NewContext();
-        var collection = new VinylCollection(context);
+        var collection = Collection(context);
 
         var first = await collection.AddAsync(release, new CopyDetails { Notes = "first" });
 
@@ -207,7 +209,7 @@ public class VinylCollectionTests
         var release = await HeldRelease(database, "So What", "Freddie Freeloader", "Blue In Green");
 
         await using var context = database.NewContext();
-        var collection = new VinylCollection(context);
+        var collection = Collection(context);
         var added = await collection.AddAsync(release, CopyDetails.Unknown);
 
         var found = await collection.FindAsync(added.Id);
@@ -226,7 +228,7 @@ public class VinylCollectionTests
         var release = await HeldRelease(database);
 
         await using var context = database.NewContext();
-        var collection = new VinylCollection(context);
+        var collection = Collection(context);
         var added = await collection.AddAsync(release, CopyDetails.Unknown);
 
         Assert.True(await collection.RemoveAsync(added.Id));
@@ -237,12 +239,39 @@ public class VinylCollectionTests
     }
 
     [Fact]
+    public async Task Removing_a_played_copy_keeps_it_as_a_former_copy()
+    {
+        await using var database = await TestDatabase.CreateAsync();
+        var release = await HeldRelease(database);
+
+        await using var context = database.NewContext();
+        var collection = Collection(context);
+        var played = await collection.AddAsync(release, CopyDetails.Unknown);
+        var log = Gigs.Shelf.Log(context);
+        var gig = await log.CreateAsync(new GigDetails { PlayedOn = new DateOnly(2026, 9, 26) });
+        await log.AddPlayAsync(gig.Id, gig.Selections[0].Id, played.Id);
+
+        Assert.True(await collection.RemoveAsync(played.Id));
+
+        await using var later = database.NewContext();
+        var kept = await later.Set<Copy>().SingleAsync();
+        var afterwards = Collection(later);
+
+        Assert.True(kept.IsFormer);
+        Assert.Empty(await afterwards.ListAsync());
+        Assert.Null(await afterwards.FindAsync(played.Id));
+        Assert.False(await afterwards.UpdateAsync(played.Id, CopyDetails.Unknown));
+        Assert.False(await afterwards.RemoveAsync(played.Id));
+        Assert.True((await Gigs.Shelf.Log(later).FindAsync(gig.Id))!.Selections[0].Plays.Single().IsFormer);
+    }
+
+    [Fact]
     public async Task Removing_a_copy_that_is_not_mine_says_so()
     {
         await using var database = await TestDatabase.CreateAsync();
         await using var context = database.NewContext();
 
-        Assert.False(await new VinylCollection(context).RemoveAsync(Guid.CreateVersion7()));
+        Assert.False(await Collection(context).RemoveAsync(Guid.CreateVersion7()));
     }
 
     [Fact]
@@ -253,8 +282,11 @@ public class VinylCollectionTests
 
         // A Copy without its Release is meaningless, and the database is what says so.
         await Assert.ThrowsAsync<DbUpdateException>(
-            () => new VinylCollection(context).AddAsync(Guid.CreateVersion7(), CopyDetails.Unknown));
+            () => Collection(context).AddAsync(Guid.CreateVersion7(), CopyDetails.Unknown));
     }
+
+    private static VinylCollection Collection(SevenBySevenDbContext context) =>
+        new(context, TestDatabase.PlayHistory(context));
 
     private static async Task<Guid> HeldRelease(TestDatabase database, params string[] trackTitles)
     {

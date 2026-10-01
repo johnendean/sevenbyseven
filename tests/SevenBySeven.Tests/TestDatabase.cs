@@ -1,11 +1,14 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using SevenBySeven.Modules.Catalogue;
 using SevenBySeven.Modules.Catalogue.Domain;
+using Microsoft.Extensions.Options;
 using SevenBySeven.Modules.Collection;
+using SevenBySeven.Modules.Gigs;
 using SevenBySeven.Shared.Modularity;
 using SevenBySeven.Shared.Persistence;
 
@@ -20,7 +23,7 @@ namespace SevenBySeven.Tests;
 internal sealed class TestDatabase : IAsyncDisposable
 {
     private static readonly IModule[] Modules =
-        [new CatalogueModule(), new CollectionModule(), new SqliteQuirks()];
+        [new CatalogueModule(), new CollectionModule(), new GigsModule(), new SqliteQuirks()];
 
     private readonly SqliteConnection _connection;
 
@@ -44,11 +47,12 @@ internal sealed class TestDatabase : IAsyncDisposable
     /// A fresh context over the same database — what a later request would see, with
     /// nothing left in the change tracker to flatter the result.
     /// </summary>
-    public SevenBySevenDbContext NewContext() =>
+    public SevenBySevenDbContext NewContext(params IInterceptor[] interceptors) =>
         new(
             new DbContextOptionsBuilder<SevenBySevenDbContext>()
                 .UseSqlite(_connection)
                 .UseSnakeCaseNamingConvention()
+                .AddInterceptors(interceptors)
                 .Options,
             Modules);
 
@@ -75,6 +79,10 @@ internal sealed class TestDatabase : IAsyncDisposable
 
         return release;
     }
+
+    /// <summary>The real play history over a context, with the Repeat window as configured.</summary>
+    public static IPlayHistory PlayHistory(SevenBySevenDbContext context, int repeatWindow = GigsOptions.DefaultRepeatWindow) =>
+        new PlayHistory(context, Options.Create(new GigsOptions { RepeatWindow = repeatWindow }));
 
     public async ValueTask DisposeAsync() => await _connection.DisposeAsync();
 
