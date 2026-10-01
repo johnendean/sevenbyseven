@@ -8,12 +8,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Aspire.Hosting.Testing" />
     <PackageReference Include="coverlet.collector" />
-    <!-- A real relational provider, so the tests meet the same keys, foreign keys and
-         unique indexes Postgres enforces, without needing a container to run them. -->
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <!-- The database tests run against the same Postgres the app does, in a container
+         started for the run. See docs/adr/0007-tests-run-against-postgres.md. -->
+    <PackageReference Include="Testcontainers.PostgreSql" />
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio" />
   </ItemGroup>
@@ -23,7 +22,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\SevenBySeven.AppHost\SevenBySeven.AppHost.csproj" />
     <ProjectReference Include="..\..\src\SevenBySeven.Shared\SevenBySeven.Shared.csproj" />
     <ProjectReference Include="..\..\src\Modules\SevenBySeven.Modules.Identification\SevenBySeven.Modules.Identification.csproj" />
     <ProjectReference Include="..\..\src\Modules\SevenBySeven.Modules.Scanning\SevenBySeven.Modules.Scanning.csproj" />
