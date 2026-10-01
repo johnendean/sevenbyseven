@@ -51,7 +51,8 @@ jobs:
           SixLaborsLicenseKey: ${{ secrets.SIXLABORS_LICENSE_KEY }}
         run: dotnet build --no-restore --configuration Release
 
-      # The tests use SQLite in memory, so no container runtime and no credentials.
+      # The database tests start Postgres in a container, which the runner's Docker
+      # provides. No credentials: the container is the tests' own.
       - name: Test
         run: >
           dotnet test
