@@ -13,7 +13,8 @@ are in [docs/adr](./docs/adr).
 ## Prerequisites
 
 - .NET 10 SDK
-- A container runtime (Docker Desktop or Podman) — Aspire runs Postgres in a container
+- A container runtime (Docker Desktop or Podman) — Aspire runs Postgres in a container, and
+  so do the tests
 - A Discogs personal access token, from <https://www.discogs.com/settings/developers>
 - An Anthropic API key, for reading text off a photographed sleeve
 
@@ -147,7 +148,7 @@ src/Modules/…Identification       barcode decode, sleeve reading, Discogs sear
 src/Modules/…Catalogue            Release and Track — cached Discogs data
 src/Modules/…Collection           Copy — the records I own, and the pages for browsing them
 src/Modules/…Gigs                 Gig, Selection and Play — what I played, and Repeats
-tests/SevenBySeven.Tests          unit tests, plus Aspire integration test support
+tests/SevenBySeven.Tests          unit tests, and database tests against Postgres
 scripts                           the coverage gate CI and you both run
 ```
 
@@ -161,8 +162,10 @@ carries its own pages.
 dotnet test
 ```
 
-The tests that touch the database run against SQLite in memory rather than Postgres, so
-they enforce real keys, foreign keys and unique indexes without needing a container.
+The tests that touch the database run against Postgres, in a container Testcontainers
+starts for the run and removes afterwards, so a container runtime has to be running. Each
+test gets a database of its own, built by the same migrations the app applies — see
+[ADR 0007](./docs/adr/0007-tests-run-against-postgres.md).
 
 Coverage is collected on every run. A branch below 80% line coverage does not merge:
 
