@@ -28,18 +28,24 @@ dotnet user-secrets set "Discogs:PersonalAccessToken" "<token>" --project src/Se
 ```
 
 For Anthropic, sign in with the [`ant` CLI](https://github.com/anthropics/anthropic-cli)
-rather than storing a key. The SDK picks up the sign-in by itself:
+rather than storing a key. The SDK picks up the sign-in by itself. On macOS:
 
 ```bash
 brew install anthropics/tap/ant
 xattr -d com.apple.quarantine "$(brew --prefix)/bin/ant"
+```
+
+On Linux or Windows, download `ant` from the
+[releases page](https://github.com/anthropics/anthropic-cli/releases). Then sign in:
+
+```bash
 ant auth login
 ant auth status   # shows which credential is in use
 ```
 
 A key still works and takes priority over the sign-in, whether it is set in
 `ANTHROPIC_API_KEY` or in user secrets as `Identification:AnthropicApiKey`. To use the sign-in,
-remove the user secret and leave `ANTHROPIC_API_KEY` unset; even an empty value outranks it.
+remove the user secret and leave `ANTHROPIC_API_KEY` unset or empty.
 
 Without credentials the app still runs: identification degrades rather than failing. With
 no Anthropic access only the barcode path can identify a record; with no Discogs token no
