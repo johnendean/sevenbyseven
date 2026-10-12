@@ -38,12 +38,6 @@ internal sealed class ClaudeSleeveReader(
         string contentType,
         CancellationToken cancellationToken = default)
     {
-        if (!_options.IsConfigured)
-        {
-            throw new SleeveReadException(
-                "No Anthropic API key is configured, so the sleeve cannot be read.");
-        }
-
         if (image.IsEmpty)
         {
             return new SleeveDetails();

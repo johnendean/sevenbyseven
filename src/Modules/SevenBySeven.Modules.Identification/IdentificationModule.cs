@@ -1,4 +1,5 @@
 using Anthropic;
+using Anthropic.Core;
 using Anthropic.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -32,10 +33,12 @@ public sealed class IdentificationModule : IModule
         {
             var options = provider.GetRequiredService<IOptions<IdentificationOptions>>().Value;
 
-            // A bare client still resolves credentials from the environment, so only
-            // override when a key was configured explicitly.
-            return options.IsConfigured
-                ? new AnthropicClient { ApiKey = options.AnthropicApiKey }
+            // A bare client resolves credentials itself, from the environment or the
+            // sign-in `ant auth login` stores, so only override when a key was configured.
+            // The key goes in through ClientOptions so the constructor sees it and skips
+            // that resolution: a stale ANTHROPIC_PROFILE would otherwise throw first.
+            return options.HasApiKey
+                ? new AnthropicClient(new ClientOptions { ApiKey = options.AnthropicApiKey })
                 : new AnthropicClient();
         });
 
