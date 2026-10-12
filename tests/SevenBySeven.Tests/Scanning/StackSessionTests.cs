@@ -1,3 +1,4 @@
+using SevenBySeven.Modules.Identification.Domain;
 using SevenBySeven.Modules.Scanning;
 using SevenBySeven.Modules.Scanning.Domain;
 
@@ -30,6 +31,16 @@ public class StackSessionTests
         Assert.True(session.HasStack);
         Assert.Equal(10, stack.Capacity);
         Assert.Equal(1, raised);
+    }
+
+    [Fact]
+    public void Beginning_a_stack_fixes_its_format()
+    {
+        var session = new StackSession();
+
+        var stack = session.Begin(10, Format.LP);
+
+        Assert.Equal(Format.LP, stack.Format);
     }
 
     [Fact]

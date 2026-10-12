@@ -95,6 +95,15 @@
     max-width: 32rem;
 }
 
+.stack-format {
+    max-width: 32rem;
+    margin: 1rem 0;
+}
+
+.stack-format .stack-meta {
+    margin: 0.25rem 0 0;
+}
+
 .stack-defaults {
     max-width: 32rem;
     padding: 1rem;
@@ -164,6 +173,10 @@
 
 .stack-failed {
     color: #b02a37;
+}
+
+.stack-widened {
+    color: #997404;
 }
 
 .candidate-list {

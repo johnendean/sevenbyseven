@@ -94,10 +94,18 @@ the camera then waits for the next one. Take one away before presenting another 
 is what tells the app that a different record has arrived, not the same one still in
 shot.
 
-Nothing is identified while you are capturing. When the pile is done you work through the
-results at a desk: every Scan is listed with its Match Candidates, confirmed in any order,
-and anything that matched nothing is abandoned from the list. Where you bought them and
-where they are kept are asked once for the whole Stack rather than ten times.
+Each record is identified in the background while you carry on capturing, so most results
+are ready by the time the pile is done. You then work through them at a desk: every Scan
+is listed with its Match Candidates, confirmed in any order, and anything that matched
+nothing is abandoned from the list. Where you bought them and where they are kept are
+asked once for the whole Stack rather than ten times.
+
+Before starting, choose which records are in the pile: any vinyl, 7", LP, 12" single or
+10". Discogs is searched for that Format only, which cuts down the candidates when a pile
+is all singles. Discogs entries don't all record their size, so when nothing matches, the
+search widens to any vinyl and the results say so. A barcode is never narrowed, since it
+already names one pressing. The choice is remembered by this browser for the next Stack,
+and starts as any vinyl.
 
 A Stack holds ten records by default and stops there. Raise it for an afternoon of
 cataloguing and put it back afterwards:

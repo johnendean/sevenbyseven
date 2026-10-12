@@ -1,4 +1,5 @@
 using SevenBySeven.Modules.Identification.Discogs;
+using SevenBySeven.Modules.Identification.Domain;
 
 namespace SevenBySeven.Tests.Identification;
 
@@ -54,6 +55,26 @@ public class DiscogsCatalogueTests
         Assert.DoesNotContain("artist=", uri, StringComparison.Ordinal);
         Assert.DoesNotContain("barcode=", uri, StringComparison.Ordinal);
         Assert.Contains("catno=BLP%204003", uri, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(Format.Vinyl, "Vinyl")]
+    [InlineData(Format.SevenInch, "Vinyl, 7\"")]
+    [InlineData(Format.LP, "Vinyl, LP")]
+    [InlineData(Format.TwelveInch, "Vinyl, 12\"")]
+    [InlineData(Format.TenInch, "Vinyl, 10\"")]
+    public void Every_format_stays_within_vinyl(Format format, string term) =>
+        Assert.Equal(term, DiscogsCatalogue.FormatTerm(format));
+
+    [Fact]
+    public void BuildSearchUri_narrows_to_the_query_format_in_one_parameter()
+    {
+        // Discogs applies only the first format parameter, so the terms share one.
+        var uri = DiscogsCatalogue.BuildSearchUri(
+            new DiscogsQuery { CatalogueNumber = "R 5084", Format = Format.SevenInch }, 5);
+
+        Assert.Contains("format=Vinyl%2C%207%22", uri, StringComparison.Ordinal);
+        Assert.Single(uri.Split('&'), part => part.StartsWith("format=", StringComparison.Ordinal));
     }
 
     [Fact]

@@ -138,7 +138,7 @@ internal sealed class DiscogsCatalogue(
         {
             new("type", "release"),
             // Vinyl only: this catalogues records, and the CD pressing is never the answer.
-            new("format", "Vinyl"),
+            new("format", FormatTerm(query.Format)),
             new("per_page", perPage.ToString()),
         };
 
@@ -166,6 +166,21 @@ internal sealed class DiscogsCatalogue(
 
         return $"database/search?{encoded}";
     }
+
+    /// <summary>
+    /// Discogs matches <c>format</c> against a release's format name and its descriptions
+    /// both, and takes several terms in one comma-separated value; a second
+    /// <c>format</c> parameter is ignored. A bare size such as <c>7"</c> also catches
+    /// reel-to-reel tape at "7 ½ ips", so every term keeps Vinyl in front of it.
+    /// </summary>
+    internal static string FormatTerm(Format format) => format switch
+    {
+        Format.SevenInch => "Vinyl, 7\"",
+        Format.LP => "Vinyl, LP",
+        Format.TwelveInch => "Vinyl, 12\"",
+        Format.TenInch => "Vinyl, 10\"",
+        _ => "Vinyl",
+    };
 
     private static MatchCandidate ToCandidate(DiscogsSearchResult result)
     {

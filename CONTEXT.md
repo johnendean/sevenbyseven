@@ -15,7 +15,7 @@ A Copy I no longer own but have played, kept so that the Gigs it was played at s
 _Avoid_: Deleted, Archived, Sold, Removed
 
 **Release**:
-A specific pressing as catalogued externally — a particular label, catalogue number, country, year and format. "Columbia CS 8163, US, 1959, stereo" is a Release. Many Copies may share one Release.
+A specific pressing as catalogued externally — a particular label, catalogue number, country, year and physical description. "Columbia CS 8163, US, 1959, stereo" is a Release. Many Copies may share one Release.
 _Avoid_: Pressing, Edition, Version, Variant
 
 **Master**:
@@ -39,6 +39,10 @@ _Avoid_: Capture, Upload, Photo, Session
 **Stack**:
 A run of Scans captured back to back from one camera session, up to a fixed limit. A Stack holds its Scans together until each has been confirmed or abandoned, and is then gone: a Stack is no more kept than the Scans in it.
 _Avoid_: Batch, Queue, Run, Crate, Session
+
+**Format**:
+The kind of vinyl record a Stack is limited to: any vinyl, 7", LP, 12" or 10". An LP is its own Format even though it is twelve inches; 12" means a single or maxi-single. It is a claim about the whole pile, chosen before the Stack starts and fixed for its life; each Stack begins with the Format the previous one used.
+_Avoid_: Size, Filter, Type, Media
 
 **Match Candidate**:
 One of the Releases put forward as the possible answer to a Scan, shown to me alongside its sleeve image and pressing details.

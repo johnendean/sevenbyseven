@@ -1,3 +1,4 @@
+using SevenBySeven.Modules.Identification.Domain;
 using SevenBySeven.Modules.Scanning.Domain;
 
 namespace SevenBySeven.Modules.Scanning;
@@ -25,9 +26,9 @@ public sealed class StackSession
 
     public event Action? Changed;
 
-    public Stack Begin(int capacity)
+    public Stack Begin(int capacity, Format format = Format.Vinyl)
     {
-        Current = new Stack(capacity);
+        Current = new Stack(capacity, format);
         Defaults = StackDefaults.None;
         Changed?.Invoke();
 

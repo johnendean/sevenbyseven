@@ -9,8 +9,13 @@ namespace SevenBySeven.Modules.Identification;
 /// </summary>
 public interface ISleeveIdentifier
 {
+    /// <param name="format">
+    /// Narrows the catalogue number and artist-and-title searches. A barcode names one
+    /// Release exactly, so it is never narrowed.
+    /// </param>
     Task<IdentificationResult> IdentifyAsync(
         ReadOnlyMemory<byte> image,
         string contentType,
+        Format format = Format.Vinyl,
         CancellationToken cancellationToken = default);
 }

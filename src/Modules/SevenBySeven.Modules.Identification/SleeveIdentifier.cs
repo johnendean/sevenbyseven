@@ -20,6 +20,7 @@ internal sealed class SleeveIdentifier(
     public async Task<IdentificationResult> IdentifyAsync(
         ReadOnlyMemory<byte> image,
         string contentType,
+        Format format = Format.Vinyl,
         CancellationToken cancellationToken = default)
     {
         if (image.IsEmpty)
@@ -66,29 +67,70 @@ internal sealed class SleeveIdentifier(
         // 2b. Catalogue number plus label: the vinyl collector's identifying pair.
         if (!string.IsNullOrWhiteSpace(details.CatalogueNumber))
         {
-            var byCatalogueNumber = await catalogue.SearchAsync(
+            var byCatalogueNumber = await SearchWithinFormatAsync(
                 new DiscogsQuery { CatalogueNumber = details.CatalogueNumber, LabelName = details.LabelName },
+                format,
+                details,
+                IdentificationRoute.CatalogueNumber,
                 cancellationToken);
 
-            if (byCatalogueNumber.Count > 0)
+            if (byCatalogueNumber is not null)
             {
-                return new IdentificationResult(byCatalogueNumber, details, IdentificationRoute.CatalogueNumber);
+                return byCatalogueNumber;
             }
         }
 
         // 2c. Artist and title. Broad, and the case where confirmation matters most.
         if (!string.IsNullOrWhiteSpace(details.ArtistName) || !string.IsNullOrWhiteSpace(details.Title))
         {
-            var byName = await catalogue.SearchAsync(
+            var byName = await SearchWithinFormatAsync(
                 new DiscogsQuery { ArtistName = details.ArtistName, Title = details.Title },
+                format,
+                details,
+                IdentificationRoute.ArtistAndTitle,
                 cancellationToken);
 
-            if (byName.Count > 0)
+            if (byName is not null)
             {
-                return new IdentificationResult(byName, details, IdentificationRoute.ArtistAndTitle);
+                return byName;
             }
         }
 
         return IdentificationResult.Nothing(details);
+    }
+
+    /// <summary>
+    /// Searches within the chosen Format, then as any vinyl when that finds nothing.
+    /// Discogs entries do not all record their size, so a strict Format would hide the
+    /// right Release; the wider answer is marked instead, and Confirmation still decides.
+    /// The fallback stays on the same evidence before moving to weaker evidence: a
+    /// catalogue number matched as any vinyl is a better answer than an artist and
+    /// title matched within the Format.
+    /// </summary>
+    private async Task<IdentificationResult?> SearchWithinFormatAsync(
+        DiscogsQuery query,
+        Format format,
+        SleeveDetails details,
+        IdentificationRoute route,
+        CancellationToken cancellationToken)
+    {
+        var within = await catalogue.SearchAsync(query with { Format = format }, cancellationToken);
+        if (within.Count > 0)
+        {
+            return new IdentificationResult(within, details, route);
+        }
+
+        if (format is Format.Vinyl)
+        {
+            return null;
+        }
+
+        logger.LogInformation("Nothing matched as {Format}; searching any vinyl.", format);
+
+        var anyVinyl = await catalogue.SearchAsync(query with { Format = Format.Vinyl }, cancellationToken);
+
+        return anyVinyl.Count > 0
+            ? new IdentificationResult(anyVinyl, details, route) { IsOutsideFormat = true }
+            : null;
     }
 }

@@ -1,3 +1,4 @@
+using SevenBySeven.Modules.Identification.Domain;
 using SevenBySeven.Modules.Scanning.Domain;
 using Stack = SevenBySeven.Modules.Scanning.Domain.Stack;
 
@@ -19,6 +20,14 @@ public class StackTests
         Assert.Equal(10, stack.Capacity);
         Assert.Equal(10, stack.Remaining);
     }
+
+    [Fact]
+    public void A_stack_searches_any_vinyl_unless_told_otherwise() =>
+        Assert.Equal(Format.Vinyl, new Stack(10).Format);
+
+    [Fact]
+    public void A_stack_keeps_the_format_it_was_started_with() =>
+        Assert.Equal(Format.SevenInch, new Stack(10, Format.SevenInch).Format);
 
     [Theory]
     [InlineData(0)]
