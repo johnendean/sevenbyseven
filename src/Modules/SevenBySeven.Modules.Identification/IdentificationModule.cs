@@ -32,9 +32,9 @@ public sealed class IdentificationModule : IModule
         {
             var options = provider.GetRequiredService<IOptions<IdentificationOptions>>().Value;
 
-            // A bare client still resolves credentials from the environment, so only
-            // override when a key was configured explicitly.
-            return options.IsConfigured
+            // A bare client resolves credentials itself, from the environment or the
+            // sign-in `ant auth login` stores, so only override when a key was configured.
+            return options.HasApiKey
                 ? new AnthropicClient { ApiKey = options.AnthropicApiKey }
                 : new AnthropicClient();
         });

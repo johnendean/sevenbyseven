@@ -63,15 +63,16 @@ public class ClaudeSleeveReaderTests
         Assert.Equal("BLP 4003", ClaudeSleeveReader.Parse("""{"catalogueNumber": "  BLP 4003  "}""").CatalogueNumber);
 
     [Fact]
-    public async Task An_unconfigured_key_is_reported_rather_than_read_as_an_illegible_sleeve()
+    public async Task A_sleeve_is_read_without_a_configured_key()
     {
-        var service = FakeMessageService.Saying("{}");
+        // The SDK finds credentials itself, from the environment or `ant auth login`.
+        // With none at all the call fails with the API's own authentication error.
+        var service = FakeMessageService.Saying("""{"title": "Kind Of Blue"}""");
 
-        var thrown = await Assert.ThrowsAsync<SleeveReadException>(
-            () => Reader(service, key: null).ReadAsync(Jpeg, "image/jpeg"));
+        var details = await Reader(service, key: null).ReadAsync(Jpeg, "image/jpeg");
 
-        Assert.Contains("API key", thrown.Message);
-        Assert.Equal(0, service.Calls);
+        Assert.Equal("Kind Of Blue", details.Title);
+        Assert.Equal(1, service.Calls);
     }
 
     [Fact]

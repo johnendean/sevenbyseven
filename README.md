@@ -16,20 +16,33 @@ are in [docs/adr](./docs/adr).
 - A container runtime (Docker Desktop or Podman) — Aspire runs Postgres in a container, and
   so do the tests
 - A Discogs personal access token, from <https://www.discogs.com/settings/developers>
-- An Anthropic API key, for reading text off a photographed sleeve
+- Access to the Anthropic API, for reading text off a photographed sleeve
 
 ## Configuration
 
-Both credentials are read from user secrets on the web project. Neither belongs in
+The Discogs token is read from user secrets on the web project. It does not belong in
 `appsettings.json`.
 
 ```bash
 dotnet user-secrets set "Discogs:PersonalAccessToken" "<token>" --project src/SevenBySeven.Web
-dotnet user-secrets set "Identification:AnthropicApiKey" "<key>" --project src/SevenBySeven.Web
 ```
 
-Without them the app still runs: identification degrades rather than failing. With no
-Anthropic key only the barcode path can identify a record; with no Discogs token no
+For Anthropic, sign in with the [`ant` CLI](https://github.com/anthropics/anthropic-cli)
+rather than storing a key. The SDK picks up the sign-in by itself:
+
+```bash
+brew install anthropics/tap/ant
+xattr -d com.apple.quarantine "$(brew --prefix)/bin/ant"
+ant auth login
+ant auth status   # shows which credential is in use
+```
+
+A key still works and takes priority over the sign-in, whether it is set in
+`ANTHROPIC_API_KEY` or in user secrets as `Identification:AnthropicApiKey`. To use the sign-in,
+remove the user secret and leave `ANTHROPIC_API_KEY` unset; even an empty value outranks it.
+
+Without credentials the app still runs: identification degrades rather than failing. With
+no Anthropic access only the barcode path can identify a record; with no Discogs token no
 search happens at all.
 
 ## The Six Labors licence
