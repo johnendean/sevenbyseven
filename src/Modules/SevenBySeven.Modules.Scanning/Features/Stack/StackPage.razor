@@ -42,8 +42,8 @@
                 }
             </select>
             <p class="stack-meta">
-                Discogs is searched for these only. When nothing matches, the search widens
-                to any vinyl and says so.
+                Discogs is searched for these only, except by barcode, which already names
+                one pressing. When nothing matches, the search widens to any vinyl and says so.
             </p>
         </div>
 
@@ -168,7 +168,7 @@ else
                             @if (captured.Result!.IsOutsideFormat)
                             {
                                 <p class="stack-meta stack-widened">
-                                    Nothing matched as @FormatSearched(stack.Format), so these
+                                    Nothing matched as @FormatRecords(stack.Format), so these
                                     are from any vinyl. Check the format before you pick.
                                 </p>
                             }
@@ -647,14 +647,18 @@ else
         _ => "Any vinyl",
     };
 
-    private static string FormatSearched(Format format) => format switch
+    private static string FormatRecords(Format format) => format switch
     {
-        Format.SevenInch => "7\" records only",
-        Format.LP => "LPs only",
-        Format.TwelveInch => "12\" singles only",
-        Format.TenInch => "10\" records only",
+        Format.SevenInch => "7\" records",
+        Format.LP => "LPs",
+        Format.TwelveInch => "12\" singles",
+        Format.TenInch => "10\" records",
         _ => "any vinyl",
     };
+
+    /// <summary>A barcode is never narrowed, so a narrowed Format says so.</summary>
+    private static string FormatSearched(Format format) =>
+        format is Format.Vinyl ? FormatRecords(format) : $"{FormatRecords(format)} only, except by barcode";
 
     private static string RouteDescription(IdentificationRoute route) => route switch
     {
