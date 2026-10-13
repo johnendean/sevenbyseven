@@ -27,6 +27,13 @@ public sealed record IdentificationResult(
 {
     public bool HasCandidates => Candidates.Count > 0;
 
+    /// <summary>
+    /// The search limited to the chosen Format found nothing, so these candidates come
+    /// from any vinyl. Discogs entries do not all record their size, so the right Release
+    /// can be among them; it is worth saying so before one is confirmed.
+    /// </summary>
+    public bool IsOutsideFormat { get; init; }
+
     public static IdentificationResult Nothing(SleeveDetails? details = null) =>
         new([], details ?? new SleeveDetails(), IdentificationRoute.None);
 }

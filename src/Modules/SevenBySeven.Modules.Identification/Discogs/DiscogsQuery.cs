@@ -1,3 +1,5 @@
+using SevenBySeven.Modules.Identification.Domain;
+
 namespace SevenBySeven.Modules.Identification.Discogs;
 
 /// <summary>
@@ -12,6 +14,9 @@ public sealed record DiscogsQuery
     public string? ArtistName { get; init; }
     public string? Title { get; init; }
     public int? Year { get; init; }
+
+    /// <summary>Always applied: a search never leaves vinyl, only narrows within it.</summary>
+    public Format Format { get; init; } = Format.Vinyl;
 
     public bool IsEmpty =>
         string.IsNullOrWhiteSpace(Barcode)

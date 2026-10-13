@@ -29,9 +29,23 @@
         <p>
             Hold a record up to the camera. It is captured on its own once it is steady, and
             then the camera waits for the next one &mdash; take one away before presenting
-            another. Up to @Options.Value.MaxStackSize records, and nothing is identified
-            until you have finished the pile.
+            another. Up to @Options.Value.MaxStackSize records. Each one is identified in
+            the background while you carry on, and you pick the matches once the pile is done.
         </p>
+
+        <div class="stack-format">
+            <label class="form-label" for="format">Records in this stack</label>
+            <select id="format" class="form-select" value="@_format" @onchange="SetFormat">
+                @foreach (var format in Enum.GetValues<Format>())
+                {
+                    <option value="@format">@FormatChoice(format)</option>
+                }
+            </select>
+            <p class="stack-meta">
+                Discogs is searched for these only, except by barcode, which already names
+                one pressing. When nothing matches, the search widens to any vinyl and says so.
+            </p>
+        </div>
 
         <div class="stack-actions">
             <button class="btn btn-primary" @onclick="Begin">Start a stack</button>
@@ -78,6 +92,8 @@ else if (!_reviewing)
         </div>
     }
 
+    <p class="stack-meta">Searching Discogs for @FormatSearched(stack.Format).</p>
+
     <div class="stack-shots">
         @foreach (var captured in stack.Scans)
         {
@@ -100,6 +116,7 @@ else if (!_reviewing)
 else
 {
     <p class="stack-meta">
+        Searched Discogs for @FormatSearched(stack.Format).
         @stack.ConfirmedCount of @Counted(stack.Count) added.
         @if (stack.PendingCount > 0)
         {
@@ -148,6 +165,13 @@ else
                                 Matched on @RouteDescription(captured.Result!.Route).
                                 Pick the pressing you photographed.
                             </p>
+                            @if (captured.Result!.IsOutsideFormat)
+                            {
+                                <p class="stack-meta stack-widened">
+                                    Nothing matched as @FormatRecords(stack.Format), so these
+                                    are from any vinyl. Check the format before you pick.
+                                </p>
+                            }
                             <ul class="candidate-list">
                                 @foreach (var candidate in captured.Result!.Candidates)
                                 {
@@ -226,6 +250,11 @@ else
 @code {
     private const string ModulePath = "./_content/SevenBySeven.Modules.Scanning/js/detector.js";
 
+    private const string PreferencesPath = "./_content/SevenBySeven.Modules.Scanning/js/preferences.js";
+
+    /// <summary>Where this browser remembers the last Stack's Format.</summary>
+    private const string FormatKey = "sevenbyseven.stack.format";
+
     /// <summary>Long edge in pixels, as for a single Scan: enough for a catalogue number.</summary>
     private const int MaxDimension = 1600;
 
@@ -234,19 +263,22 @@ else
     private const long MaxImageBytes = 8L * 1024 * 1024;
 
     /// <summary>
-    /// One identification at a time. Ten records is up to twenty Discogs calls, and the
-    /// rate limiter queues sixteen before it decides something is looping. Running them
+    /// One identification at a time. A record is up to six Discogs calls when its Format
+    /// search widens, and the rate limiter queues sixteen before it decides something is
+    /// looping. Running them
     /// in order also settles the list top-down, which is how you read it.
     /// </summary>
     private readonly SemaphoreSlim _queue = new(1, 1);
 
     private DotNetObjectReference<StackPage>? _self;
     private IJSObjectReference? _detector;
+    private IJSObjectReference? _preferences;
     private ElementReference _video;
     private ElementReference _box;
     private ElementReference _badge;
     private CameraProbe? _probe;
     private StackDefaults _defaults = StackDefaults.None;
+    private Format _format = Format.Vinyl;
     private bool _reviewing;
     private int _confirming = -1;
     private string? _error;
@@ -282,7 +314,56 @@ else
             _error = "The camera module failed to load.";
         }
 
+        _format = await RememberedFormat();
+
         StateHasChanged();
+    }
+
+    /// <summary>
+    /// The Format the last Stack on this device used. Anything unreadable — nothing
+    /// stored, storage refused, a value from an older version — is Vinyl.
+    /// </summary>
+    private async Task<Format> RememberedFormat()
+    {
+        try
+        {
+            _preferences ??= await JS.InvokeAsync<IJSObjectReference>("import", PreferencesPath);
+            var stored = await _preferences.InvokeAsync<string?>("read", FormatKey);
+
+            return Enum.TryParse<Format>(stored, out var format) && Enum.IsDefined(format)
+                ? format
+                : Format.Vinyl;
+        }
+        catch (JSException ex)
+        {
+            Logger.LogWarning(ex, "The remembered Format could not be read.");
+            return Format.Vinyl;
+        }
+    }
+
+    private async Task RememberFormat(Format format)
+    {
+        if (_preferences is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await _preferences.InvokeVoidAsync("write", FormatKey, format.ToString());
+        }
+        catch (JSException ex)
+        {
+            Logger.LogWarning(ex, "The Format could not be remembered.");
+        }
+    }
+
+    private void SetFormat(ChangeEventArgs args)
+    {
+        if (Enum.TryParse<Format>(args.Value?.ToString(), out var format) && Enum.IsDefined(format))
+        {
+            _format = format;
+        }
     }
 
     private async Task Begin()
@@ -295,7 +376,8 @@ else
         _error = null;
         _reviewing = false;
         _defaults = StackDefaults.None;
-        Session.Begin(Options.Value.MaxStackSize);
+        var stack = Session.Begin(Options.Value.MaxStackSize, _format);
+        await RememberFormat(stack.Format);
 
         // The video element only exists once this has re-rendered.
         StateHasChanged();
@@ -374,7 +456,7 @@ else
                 await _detector!.InvokeVoidAsync("pause");
             }
 
-            QueueIdentification(stacked);
+            QueueIdentification(stacked, stack.Format);
         }
         catch (Exception ex) when (ex is JSException or IOException or FormatException)
         {
@@ -405,7 +487,7 @@ else
     /// Identification runs behind the capture loop so the pile can be worked through at
     /// the shelf and the confirmations done at the desk.
     /// </summary>
-    private void QueueIdentification(StackedScan stacked)
+    private void QueueIdentification(StackedScan stacked, Format format)
     {
         _ = Task.Run(async () =>
         {
@@ -414,7 +496,7 @@ else
             try
             {
                 stacked.Identified(
-                    await Identifier.IdentifyAsync(stacked.Scan.Image, stacked.Scan.ContentType));
+                    await Identifier.IdentifyAsync(stacked.Scan.Image, stacked.Scan.ContentType, format));
             }
             catch (SleeveReadException ex)
             {
@@ -556,6 +638,28 @@ else
             details.Barcode,
         }.Where(part => !string.IsNullOrWhiteSpace(part)));
 
+    private static string FormatChoice(Format format) => format switch
+    {
+        Format.SevenInch => "7\"",
+        Format.LP => "LP",
+        Format.TwelveInch => "12\" single",
+        Format.TenInch => "10\"",
+        _ => "Any vinyl",
+    };
+
+    private static string FormatRecords(Format format) => format switch
+    {
+        Format.SevenInch => "7\" records",
+        Format.LP => "LPs",
+        Format.TwelveInch => "12\" singles",
+        Format.TenInch => "10\" records",
+        _ => "any vinyl",
+    };
+
+    /// <summary>A barcode is never narrowed, so a narrowed Format says so.</summary>
+    private static string FormatSearched(Format format) =>
+        format is Format.Vinyl ? FormatRecords(format) : $"{FormatRecords(format)} only, except by barcode";
+
     private static string RouteDescription(IdentificationRoute route) => route switch
     {
         IdentificationRoute.Barcode => "the barcode",
@@ -570,11 +674,16 @@ else
 
         await StopDetector();
 
-        if (_detector is not null)
+        foreach (var module in new[] { _detector, _preferences })
         {
+            if (module is null)
+            {
+                continue;
+            }
+
             try
             {
-                await _detector.DisposeAsync();
+                await module.DisposeAsync();
             }
             catch (JSDisconnectedException)
             {

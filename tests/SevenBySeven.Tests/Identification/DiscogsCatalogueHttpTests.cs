@@ -35,9 +35,10 @@ public class DiscogsCatalogueHttpTests
     {
         var handler = StubHttpMessageHandler.ReturningJson(OneResult);
 
-        var candidates = await Catalogue(handler).SearchAsync(new DiscogsQuery { Barcode = "5099749494220" });
+        var search = await Catalogue(handler).SearchAsync(new DiscogsQuery { Barcode = "5099749494220" });
 
-        var candidate = Assert.Single(candidates);
+        Assert.False(search.Failed);
+        var candidate = Assert.Single(search.Candidates);
         Assert.Equal(249504, candidate.DiscogsReleaseId);
         Assert.Equal("Miles Davis", candidate.ArtistName);
         Assert.Equal("Kind Of Blue", candidate.Title);
@@ -71,7 +72,10 @@ public class DiscogsCatalogueHttpTests
     {
         var handler = StubHttpMessageHandler.ReturningJson(OneResult);
 
-        Assert.Empty(await Catalogue(handler).SearchAsync(new DiscogsQuery()));
+        var search = await Catalogue(handler).SearchAsync(new DiscogsQuery());
+
+        Assert.Empty(search.Candidates);
+        Assert.False(search.Failed);
         Assert.Empty(handler.Requests);
     }
 
@@ -80,11 +84,13 @@ public class DiscogsCatalogueHttpTests
     {
         var handler = StubHttpMessageHandler.ReturningJson(OneResult);
 
-        var candidates = await Catalogue(handler, token: null)
+        var search = await Catalogue(handler, token: null)
             .SearchAsync(new DiscogsQuery { Barcode = "5099749494220" });
 
         // Identification degrades rather than failing: the app still runs with no token.
-        Assert.Empty(candidates);
+        // It is still a failure, not an answer: Discogs was never asked.
+        Assert.Empty(search.Candidates);
+        Assert.True(search.Failed);
         Assert.Empty(handler.Requests);
     }
 
@@ -97,7 +103,10 @@ public class DiscogsCatalogueHttpTests
     {
         var handler = StubHttpMessageHandler.Returning(status, """{"results": []}""");
 
-        Assert.Empty(await Catalogue(handler).SearchAsync(new DiscogsQuery { Barcode = "5099749494220" }));
+        var search = await Catalogue(handler).SearchAsync(new DiscogsQuery { Barcode = "5099749494220" });
+
+        Assert.Empty(search.Candidates);
+        Assert.True(search.Failed);
     }
 
     [Fact]
@@ -105,7 +114,10 @@ public class DiscogsCatalogueHttpTests
     {
         var handler = StubHttpMessageHandler.Throwing(new HttpRequestException("DNS is down."));
 
-        Assert.Empty(await Catalogue(handler).SearchAsync(new DiscogsQuery { Title = "Kind Of Blue" }));
+        var search = await Catalogue(handler).SearchAsync(new DiscogsQuery { Title = "Kind Of Blue" });
+
+        Assert.Empty(search.Candidates);
+        Assert.True(search.Failed);
     }
 
     [Theory]
@@ -116,7 +128,9 @@ public class DiscogsCatalogueHttpTests
     {
         var handler = StubHttpMessageHandler.ReturningJson(json);
 
-        Assert.Empty(await Catalogue(handler).SearchAsync(new DiscogsQuery { Title = "Nothing At All" }));
+        var search = await Catalogue(handler).SearchAsync(new DiscogsQuery { Title = "Nothing At All" });
+
+        Assert.True(search.MatchedNothing);
     }
 
     [Fact]

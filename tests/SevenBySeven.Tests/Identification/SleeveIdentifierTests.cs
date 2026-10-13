@@ -115,6 +115,120 @@ public class SleeveIdentifierTests
         Assert.Equal("Nobody", result.Details.ArtistName);
     }
 
+    [Fact]
+    public async Task The_catalogue_number_is_searched_within_the_chosen_format()
+    {
+        var sleeves = new FakeSleeveReader(new SleeveDetails { CatalogueNumber = "R 5084", LabelName = "Parlophone" });
+        var catalogue = new FakeCatalogue(_ => [Candidate(7)]);
+        var identifier = Build(new FakeBarcodeScanner(null), sleeves, catalogue);
+
+        var result = await identifier.IdentifyAsync(AnyImage, "image/jpeg", Format.SevenInch);
+
+        Assert.Equal(Format.SevenInch, catalogue.Queries.Single().Format);
+        Assert.False(result.IsOutsideFormat);
+    }
+
+    [Fact]
+    public async Task Nothing_within_the_format_widens_to_any_vinyl_and_says_so()
+    {
+        // Discogs entries do not all record their size, so the right Release can sit
+        // outside a strict Format search.
+        var sleeves = new FakeSleeveReader(new SleeveDetails { CatalogueNumber = "R 5084" });
+        var catalogue = new FakeCatalogue(q => q.Format is Format.Vinyl ? [Candidate(8)] : []);
+        var identifier = Build(new FakeBarcodeScanner(null), sleeves, catalogue);
+
+        var result = await identifier.IdentifyAsync(AnyImage, "image/jpeg", Format.SevenInch);
+
+        Assert.Equal(IdentificationRoute.CatalogueNumber, result.Route);
+        Assert.True(result.IsOutsideFormat);
+        Assert.Equal([Format.SevenInch, Format.Vinyl], catalogue.Queries.Select(q => q.Format));
+    }
+
+    [Fact]
+    public async Task A_catalogue_number_as_any_vinyl_beats_artist_and_title_within_the_format()
+    {
+        var sleeves = new FakeSleeveReader(new SleeveDetails
+        {
+            CatalogueNumber = "R 5084",
+            ArtistName = "The Beatles",
+            Title = "Hey Jude",
+        });
+        var catalogue = new FakeCatalogue(q =>
+            q.CatalogueNumber is not null && q.Format is Format.Vinyl ? [Candidate(9)]
+            : q.ArtistName is not null ? [Candidate(10)]
+            : []);
+        var identifier = Build(new FakeBarcodeScanner(null), sleeves, catalogue);
+
+        var result = await identifier.IdentifyAsync(AnyImage, "image/jpeg", Format.SevenInch);
+
+        Assert.Equal(IdentificationRoute.CatalogueNumber, result.Route);
+        Assert.Equal(9, result.Candidates.Single().DiscogsReleaseId);
+        Assert.All(catalogue.Queries, q => Assert.Null(q.ArtistName));
+    }
+
+    [Fact]
+    public async Task A_barcode_is_never_narrowed_to_a_format()
+    {
+        // A barcode names one Release exactly; narrowing it could only hide that Release.
+        var catalogue = new FakeCatalogue(_ => [Candidate(11)]);
+        var identifier = Build(new FakeBarcodeScanner("5099749494220"), new FakeSleeveReader(new SleeveDetails()), catalogue);
+
+        var result = await identifier.IdentifyAsync(AnyImage, "image/jpeg", Format.LP);
+
+        Assert.Equal(Format.Vinyl, catalogue.Queries.Single().Format);
+        Assert.False(result.IsOutsideFormat);
+    }
+
+    [Fact]
+    public async Task A_failed_search_within_the_format_does_not_widen()
+    {
+        // A failure says nothing about what Discogs holds. Widening after it would mark a
+        // successful retry as outside the Format when it may not be.
+        var sleeves = new FakeSleeveReader(new SleeveDetails { CatalogueNumber = "R 5084" });
+        var catalogue = new FakeCatalogue(q => q.Format is Format.Vinyl
+            ? DiscogsSearch.Found([Candidate(12)])
+            : DiscogsSearch.Failure);
+        var identifier = Build(new FakeBarcodeScanner(null), sleeves, catalogue);
+
+        var result = await identifier.IdentifyAsync(AnyImage, "image/jpeg", Format.SevenInch);
+
+        Assert.False(result.HasCandidates);
+        Assert.False(result.IsOutsideFormat);
+        Assert.Equal(Format.SevenInch, catalogue.Queries.Single().Format);
+    }
+
+    [Fact]
+    public async Task A_failed_search_still_lets_weaker_evidence_be_tried()
+    {
+        var sleeves = new FakeSleeveReader(new SleeveDetails
+        {
+            CatalogueNumber = "R 5084",
+            ArtistName = "The Beatles",
+            Title = "Hey Jude",
+        });
+        var catalogue = new FakeCatalogue(q => q.CatalogueNumber is not null
+            ? DiscogsSearch.Failure
+            : DiscogsSearch.Found([Candidate(13)]));
+        var identifier = Build(new FakeBarcodeScanner(null), sleeves, catalogue);
+
+        var result = await identifier.IdentifyAsync(AnyImage, "image/jpeg", Format.SevenInch);
+
+        Assert.Equal(IdentificationRoute.ArtistAndTitle, result.Route);
+        Assert.False(result.IsOutsideFormat);
+    }
+
+    [Fact]
+    public async Task Any_vinyl_has_nothing_wider_to_fall_back_to()
+    {
+        var sleeves = new FakeSleeveReader(new SleeveDetails { CatalogueNumber = "UNKNOWN 1" });
+        var catalogue = new FakeCatalogue(_ => []);
+        var identifier = Build(new FakeBarcodeScanner(null), sleeves, catalogue);
+
+        await identifier.IdentifyAsync(AnyImage, "image/jpeg");
+
+        Assert.Single(catalogue.Queries);
+    }
+
     private static SleeveIdentifier Build(
         IBarcodeScanner barcodes,
         ISleeveReader sleeves,
@@ -141,11 +255,16 @@ public class SleeveIdentifierTests
         }
     }
 
-    private sealed class FakeCatalogue(Func<DiscogsQuery, IReadOnlyList<MatchCandidate>> respond) : IDiscogsCatalogue
+    private sealed class FakeCatalogue(Func<DiscogsQuery, DiscogsSearch> respond) : IDiscogsCatalogue
     {
+        public FakeCatalogue(Func<DiscogsQuery, IReadOnlyList<MatchCandidate>> answer)
+            : this(query => DiscogsSearch.Found(answer(query)))
+        {
+        }
+
         public List<DiscogsQuery> Queries { get; } = [];
 
-        public Task<IReadOnlyList<MatchCandidate>> SearchAsync(
+        public Task<DiscogsSearch> SearchAsync(
             DiscogsQuery query, CancellationToken cancellationToken = default)
         {
             Queries.Add(query);

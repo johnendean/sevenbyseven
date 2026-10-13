@@ -1,3 +1,5 @@
+using SevenBySeven.Modules.Identification.Domain;
+
 namespace SevenBySeven.Modules.Scanning.Domain;
 
 /// <summary>
@@ -9,10 +11,11 @@ public sealed class Stack
 {
     private readonly List<StackedScan> _scans = [];
 
-    public Stack(int capacity)
+    public Stack(int capacity, Format format = Format.Vinyl)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(capacity);
         Capacity = capacity;
+        Format = format;
     }
 
     public Guid Id { get; } = Guid.CreateVersion7();
@@ -22,6 +25,10 @@ public sealed class Stack
     /// <summary>The most this Stack will take. Fixed when it starts, so raising the
     /// configured limit mid-Stack cannot move the goalposts underneath it.</summary>
     public int Capacity { get; }
+
+    /// <summary>The kind of record every Scan in this Stack is searched as. A claim about
+    /// the whole pile, so it is fixed when the Stack starts, as the capacity is.</summary>
+    public Format Format { get; }
 
     public IReadOnlyList<StackedScan> Scans => _scans;
 
