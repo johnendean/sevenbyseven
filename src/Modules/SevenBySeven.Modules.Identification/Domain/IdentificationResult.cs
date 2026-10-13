@@ -34,6 +34,13 @@ public sealed record IdentificationResult(
     /// </summary>
     public bool IsOutsideFormat { get; init; }
 
+    /// <summary>
+    /// A catalogue search could not be made — Discogs unreachable, refusing, or no token
+    /// configured. With no candidates this is not "nothing matched": the record may well
+    /// be on Discogs, and saying otherwise sends me back to the shelf for nothing.
+    /// </summary>
+    public bool SearchFailed { get; init; }
+
     public static IdentificationResult Nothing(SleeveDetails? details = null) =>
         new([], details ?? new SleeveDetails(), IdentificationRoute.None);
 }

@@ -65,13 +65,22 @@
     else
     {
         <div class="alert alert-warning" role="alert">
-            <strong>No match.</strong>
-            @if (_result.Details.IsEmpty)
+            @if (_result.SearchFailed)
             {
+                <strong>Discogs couldn't be reached.</strong>
+                <span>
+                    The search didn't complete, so this record may well be on Discogs. Check the
+                    connection, or that a Discogs token is set, and try again.
+                </span>
+            }
+            else if (_result.Details.IsEmpty)
+            {
+                <strong>No match.</strong>
                 <span>Nothing legible was read. Try the centre label, or get closer to the catalogue number.</span>
             }
             else
             {
+                <strong>No match.</strong>
                 <span>Read @DescribeDetails(_result.Details), but Discogs had nothing matching.</span>
             }
         </div>

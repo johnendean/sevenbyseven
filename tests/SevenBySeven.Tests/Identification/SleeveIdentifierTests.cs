@@ -218,6 +218,47 @@ public class SleeveIdentifierTests
     }
 
     [Fact]
+    public async Task Nothing_found_because_Discogs_failed_is_not_nothing_matching()
+    {
+        var sleeves = new FakeSleeveReader(new SleeveDetails { ArtistName = "Miles Davis", Title = "Kind Of Blue" });
+        var identifier = Build(new FakeBarcodeScanner(null), sleeves, new FakeCatalogue(_ => DiscogsSearch.Failure));
+
+        var result = await identifier.IdentifyAsync(AnyImage, "image/jpeg");
+
+        Assert.False(result.HasCandidates);
+        Assert.True(result.SearchFailed);
+        Assert.Equal("Miles Davis", result.Details.ArtistName);
+    }
+
+    [Fact]
+    public async Task Nothing_found_by_searches_that_all_ran_is_nothing_matching()
+    {
+        var sleeves = new FakeSleeveReader(new SleeveDetails { CatalogueNumber = "UNKNOWN 1", Title = "Nothing" });
+        var identifier = Build(new FakeBarcodeScanner(null), sleeves, new FakeCatalogue(_ => []));
+
+        var result = await identifier.IdentifyAsync(AnyImage, "image/jpeg", Format.SevenInch);
+
+        Assert.False(result.HasCandidates);
+        Assert.False(result.SearchFailed);
+    }
+
+    [Fact]
+    public async Task A_failed_barcode_search_is_remembered_when_the_sleeve_reads_nothing()
+    {
+        // The barcode was read and could not be looked up; an illegible sleeve after that
+        // is not the reason nothing was found.
+        var identifier = Build(
+            new FakeBarcodeScanner("5099749494220"),
+            new FakeSleeveReader(new SleeveDetails()),
+            new FakeCatalogue(_ => DiscogsSearch.Failure));
+
+        var result = await identifier.IdentifyAsync(AnyImage, "image/jpeg");
+
+        Assert.False(result.HasCandidates);
+        Assert.True(result.SearchFailed);
+    }
+
+    [Fact]
     public async Task Any_vinyl_has_nothing_wider_to_fall_back_to()
     {
         var sleeves = new FakeSleeveReader(new SleeveDetails { CatalogueNumber = "UNKNOWN 1" });
