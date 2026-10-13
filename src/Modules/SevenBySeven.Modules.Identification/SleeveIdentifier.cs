@@ -34,10 +34,10 @@ internal sealed class SleeveIdentifier(
             logger.LogInformation("Read barcode {Barcode} from the sleeve.", barcode);
 
             var byBarcode = await catalogue.SearchAsync(new DiscogsQuery { Barcode = barcode }, cancellationToken);
-            if (byBarcode.Count > 0)
+            if (byBarcode.Candidates.Count > 0)
             {
                 var found = new SleeveDetails { Barcode = barcode };
-                return new IdentificationResult(byBarcode, found, IdentificationRoute.Barcode);
+                return new IdentificationResult(byBarcode.Candidates, found, IdentificationRoute.Barcode);
             }
 
             logger.LogInformation("Barcode {Barcode} matched nothing; falling back to reading the sleeve.", barcode);
@@ -58,9 +58,9 @@ internal sealed class SleeveIdentifier(
             var byReadBarcode = await catalogue.SearchAsync(
                 new DiscogsQuery { Barcode = details.Barcode }, cancellationToken);
 
-            if (byReadBarcode.Count > 0)
+            if (byReadBarcode.Candidates.Count > 0)
             {
-                return new IdentificationResult(byReadBarcode, details, IdentificationRoute.Barcode);
+                return new IdentificationResult(byReadBarcode.Candidates, details, IdentificationRoute.Barcode);
             }
         }
 
@@ -115,12 +115,15 @@ internal sealed class SleeveIdentifier(
         CancellationToken cancellationToken)
     {
         var within = await catalogue.SearchAsync(query with { Format = format }, cancellationToken);
-        if (within.Count > 0)
+        if (within.Candidates.Count > 0)
         {
-            return new IdentificationResult(within, details, route);
+            return new IdentificationResult(within.Candidates, details, route);
         }
 
-        if (format is Format.Vinyl)
+        // Only an answer of "nothing" says the Format was too narrow. A search that failed
+        // says nothing about what Discogs holds, and widening after it would mark a
+        // successful retry as outside the Format when it may not be.
+        if (format is Format.Vinyl || !within.MatchedNothing)
         {
             return null;
         }
@@ -129,8 +132,8 @@ internal sealed class SleeveIdentifier(
 
         var anyVinyl = await catalogue.SearchAsync(query with { Format = Format.Vinyl }, cancellationToken);
 
-        return anyVinyl.Count > 0
-            ? new IdentificationResult(anyVinyl, details, route) { IsOutsideFormat = true }
+        return anyVinyl.Candidates.Count > 0
+            ? new IdentificationResult(anyVinyl.Candidates, details, route) { IsOutsideFormat = true }
             : null;
     }
 }

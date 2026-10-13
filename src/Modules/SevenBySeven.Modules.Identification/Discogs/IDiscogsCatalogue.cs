@@ -9,8 +9,10 @@ namespace SevenBySeven.Modules.Identification.Discogs;
 public interface IDiscogsCatalogue
 {
     /// <summary>
-    /// Returns candidates best-match-first, or an empty list when nothing matched.
-    /// An unconfigured token yields an empty list rather than an exception.
+    /// Returns candidates best-match-first. A search that could not be made — an
+    /// unconfigured token, a network failure, an error status — is
+    /// <see cref="DiscogsSearch.Failure"/> rather than an exception, so identification
+    /// degrades instead of stopping.
     /// </summary>
-    Task<IReadOnlyList<MatchCandidate>> SearchAsync(DiscogsQuery query, CancellationToken cancellationToken = default);
+    Task<DiscogsSearch> SearchAsync(DiscogsQuery query, CancellationToken cancellationToken = default);
 }

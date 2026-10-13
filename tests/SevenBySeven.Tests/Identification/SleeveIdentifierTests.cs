@@ -180,6 +180,44 @@ public class SleeveIdentifierTests
     }
 
     [Fact]
+    public async Task A_failed_search_within_the_format_does_not_widen()
+    {
+        // A failure says nothing about what Discogs holds. Widening after it would mark a
+        // successful retry as outside the Format when it may not be.
+        var sleeves = new FakeSleeveReader(new SleeveDetails { CatalogueNumber = "R 5084" });
+        var catalogue = new FakeCatalogue(q => q.Format is Format.Vinyl
+            ? DiscogsSearch.Found([Candidate(12)])
+            : DiscogsSearch.Failure);
+        var identifier = Build(new FakeBarcodeScanner(null), sleeves, catalogue);
+
+        var result = await identifier.IdentifyAsync(AnyImage, "image/jpeg", Format.SevenInch);
+
+        Assert.False(result.HasCandidates);
+        Assert.False(result.IsOutsideFormat);
+        Assert.Equal(Format.SevenInch, catalogue.Queries.Single().Format);
+    }
+
+    [Fact]
+    public async Task A_failed_search_still_lets_weaker_evidence_be_tried()
+    {
+        var sleeves = new FakeSleeveReader(new SleeveDetails
+        {
+            CatalogueNumber = "R 5084",
+            ArtistName = "The Beatles",
+            Title = "Hey Jude",
+        });
+        var catalogue = new FakeCatalogue(q => q.CatalogueNumber is not null
+            ? DiscogsSearch.Failure
+            : DiscogsSearch.Found([Candidate(13)]));
+        var identifier = Build(new FakeBarcodeScanner(null), sleeves, catalogue);
+
+        var result = await identifier.IdentifyAsync(AnyImage, "image/jpeg", Format.SevenInch);
+
+        Assert.Equal(IdentificationRoute.ArtistAndTitle, result.Route);
+        Assert.False(result.IsOutsideFormat);
+    }
+
+    [Fact]
     public async Task Any_vinyl_has_nothing_wider_to_fall_back_to()
     {
         var sleeves = new FakeSleeveReader(new SleeveDetails { CatalogueNumber = "UNKNOWN 1" });
@@ -217,11 +255,16 @@ public class SleeveIdentifierTests
         }
     }
 
-    private sealed class FakeCatalogue(Func<DiscogsQuery, IReadOnlyList<MatchCandidate>> respond) : IDiscogsCatalogue
+    private sealed class FakeCatalogue(Func<DiscogsQuery, DiscogsSearch> respond) : IDiscogsCatalogue
     {
+        public FakeCatalogue(Func<DiscogsQuery, IReadOnlyList<MatchCandidate>> answer)
+            : this(query => DiscogsSearch.Found(answer(query)))
+        {
+        }
+
         public List<DiscogsQuery> Queries { get; } = [];
 
-        public Task<IReadOnlyList<MatchCandidate>> SearchAsync(
+        public Task<DiscogsSearch> SearchAsync(
             DiscogsQuery query, CancellationToken cancellationToken = default)
         {
             Queries.Add(query);

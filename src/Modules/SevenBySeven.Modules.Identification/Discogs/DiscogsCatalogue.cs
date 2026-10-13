@@ -18,7 +18,7 @@ internal sealed class DiscogsCatalogue(
 
     private readonly DiscogsOptions _options = options.Value;
 
-    public async Task<IReadOnlyList<MatchCandidate>> SearchAsync(
+    public async Task<DiscogsSearch> SearchAsync(
         DiscogsQuery query,
         CancellationToken cancellationToken = default)
     {
@@ -26,13 +26,13 @@ internal sealed class DiscogsCatalogue(
 
         if (query.IsEmpty)
         {
-            return [];
+            return DiscogsSearch.Found([]);
         }
 
         if (!_options.IsConfigured)
         {
             logger.LogWarning("No Discogs token is configured, so no search was attempted.");
-            return [];
+            return DiscogsSearch.Failure;
         }
 
         var uri = BuildSearchUri(query, _options.CandidatesPerSearch);
@@ -45,7 +45,7 @@ internal sealed class DiscogsCatalogue(
         catch (HttpRequestException ex)
         {
             logger.LogError(ex, "The Discogs search request failed.");
-            return [];
+            return DiscogsSearch.Failure;
         }
 
         using (response)
@@ -55,20 +55,20 @@ internal sealed class DiscogsCatalogue(
                 // The resilience handler already retried; arriving here means Discogs is
                 // still refusing, so report nothing rather than block the user.
                 logger.LogWarning("Discogs is rate limiting us despite the local limiter.");
-                return [];
+                return DiscogsSearch.Failure;
             }
 
             if (!response.IsSuccessStatusCode)
             {
                 logger.LogError("Discogs search returned {Status}.", (int)response.StatusCode);
-                return [];
+                return DiscogsSearch.Failure;
             }
 
             var payload = await response.Content.ReadFromJsonAsync<DiscogsSearchResponse>(Json, cancellationToken);
 
-            return payload?.Results is { Count: > 0 } results
+            return DiscogsSearch.Found(payload?.Results is { Count: > 0 } results
                 ? [.. results.Select(ToCandidate)]
-                : [];
+                : []);
         }
     }
 
