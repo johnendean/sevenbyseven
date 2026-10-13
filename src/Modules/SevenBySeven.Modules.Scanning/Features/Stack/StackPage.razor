@@ -196,7 +196,15 @@ else
 
                         case StackedScanStatus.NoMatch:
                             <p class="stack-meta">
-                                @if (captured.Result!.Details.IsEmpty)
+                                @if (captured.Result!.SearchFailed)
+                                {
+                                    <span class="stack-failed">
+                                        Discogs couldn't be reached, so this one may well be on
+                                        Discogs. Check the connection, or that a Discogs token is
+                                        set, and scan it again.
+                                    </span>
+                                }
+                                else if (captured.Result!.Details.IsEmpty)
                                 {
                                     <span>Nothing legible was read from this one.</span>
                                 }

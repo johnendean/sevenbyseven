@@ -28,12 +28,23 @@ internal sealed class SleeveIdentifier(
             return IdentificationResult.Nothing();
         }
 
+        // Any search that could not be made. Only matters when nothing is found: then it
+        // decides between "Discogs had nothing" and "Discogs was not really asked".
+        var searchFailed = false;
+
+        async Task<DiscogsSearch> Search(DiscogsQuery query)
+        {
+            var search = await catalogue.SearchAsync(query, cancellationToken);
+            searchFailed |= search.Failed;
+            return search;
+        }
+
         // 1. A barcode is exact. Free to attempt, and decisive when it works.
         if (barcodes.TryRead(image) is { } barcode)
         {
             logger.LogInformation("Read barcode {Barcode} from the sleeve.", barcode);
 
-            var byBarcode = await catalogue.SearchAsync(new DiscogsQuery { Barcode = barcode }, cancellationToken);
+            var byBarcode = await Search(new DiscogsQuery { Barcode = barcode });
             if (byBarcode.Candidates.Count > 0)
             {
                 var found = new SleeveDetails { Barcode = barcode };
@@ -49,14 +60,13 @@ internal sealed class SleeveIdentifier(
         if (details.IsEmpty)
         {
             logger.LogInformation("Nothing legible was read from the sleeve.");
-            return IdentificationResult.Nothing(details);
+            return IdentificationResult.Nothing(details) with { SearchFailed = searchFailed };
         }
 
         // 2a. A barcode the scanner missed but the model could read.
         if (!string.IsNullOrWhiteSpace(details.Barcode))
         {
-            var byReadBarcode = await catalogue.SearchAsync(
-                new DiscogsQuery { Barcode = details.Barcode }, cancellationToken);
+            var byReadBarcode = await Search(new DiscogsQuery { Barcode = details.Barcode });
 
             if (byReadBarcode.Candidates.Count > 0)
             {
@@ -68,11 +78,11 @@ internal sealed class SleeveIdentifier(
         if (!string.IsNullOrWhiteSpace(details.CatalogueNumber))
         {
             var byCatalogueNumber = await SearchWithinFormatAsync(
+                Search,
                 new DiscogsQuery { CatalogueNumber = details.CatalogueNumber, LabelName = details.LabelName },
                 format,
                 details,
-                IdentificationRoute.CatalogueNumber,
-                cancellationToken);
+                IdentificationRoute.CatalogueNumber);
 
             if (byCatalogueNumber is not null)
             {
@@ -84,11 +94,11 @@ internal sealed class SleeveIdentifier(
         if (!string.IsNullOrWhiteSpace(details.ArtistName) || !string.IsNullOrWhiteSpace(details.Title))
         {
             var byName = await SearchWithinFormatAsync(
+                Search,
                 new DiscogsQuery { ArtistName = details.ArtistName, Title = details.Title },
                 format,
                 details,
-                IdentificationRoute.ArtistAndTitle,
-                cancellationToken);
+                IdentificationRoute.ArtistAndTitle);
 
             if (byName is not null)
             {
@@ -96,7 +106,7 @@ internal sealed class SleeveIdentifier(
             }
         }
 
-        return IdentificationResult.Nothing(details);
+        return IdentificationResult.Nothing(details) with { SearchFailed = searchFailed };
     }
 
     /// <summary>
@@ -108,13 +118,13 @@ internal sealed class SleeveIdentifier(
     /// title matched within the Format.
     /// </summary>
     private async Task<IdentificationResult?> SearchWithinFormatAsync(
+        Func<DiscogsQuery, Task<DiscogsSearch>> search,
         DiscogsQuery query,
         Format format,
         SleeveDetails details,
-        IdentificationRoute route,
-        CancellationToken cancellationToken)
+        IdentificationRoute route)
     {
-        var within = await catalogue.SearchAsync(query with { Format = format }, cancellationToken);
+        var within = await search(query with { Format = format });
         if (within.Candidates.Count > 0)
         {
             return new IdentificationResult(within.Candidates, details, route);
@@ -130,7 +140,7 @@ internal sealed class SleeveIdentifier(
 
         logger.LogInformation("Nothing matched as {Format}; searching any vinyl.", format);
 
-        var anyVinyl = await catalogue.SearchAsync(query with { Format = Format.Vinyl }, cancellationToken);
+        var anyVinyl = await search(query with { Format = Format.Vinyl });
 
         return anyVinyl.Candidates.Count > 0
             ? new IdentificationResult(anyVinyl.Candidates, details, route) { IsOutsideFormat = true }
