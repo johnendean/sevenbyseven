@@ -2,14 +2,12 @@
 
   <ItemGroup>
     <ProjectReference Include="..\SevenBySeven.ServiceDefaults\SevenBySeven.ServiceDefaults.csproj" />
-    <ProjectReference Include="..\Modules\SevenBySeven.Modules.Scanning\SevenBySeven.Modules.Scanning.csproj" />
-    <ProjectReference Include="..\Modules\SevenBySeven.Modules.Identification\SevenBySeven.Modules.Identification.csproj" />
-    <ProjectReference Include="..\Modules\SevenBySeven.Modules.Catalogue\SevenBySeven.Modules.Catalogue.csproj" />
-    <ProjectReference Include="..\Modules\SevenBySeven.Modules.Collection\SevenBySeven.Modules.Collection.csproj" />
-    <ProjectReference Include="..\Modules\SevenBySeven.Modules.Gigs\SevenBySeven.Modules.Gigs.csproj" />
+    <!-- Every module is composed into the host; ModuleCatalog finds them at startup. -->
+    <ProjectReference Include="..\Modules\*\*.csproj" />
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyModel" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
