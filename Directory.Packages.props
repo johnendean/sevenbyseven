@@ -33,6 +33,12 @@
     <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.15.1" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.15.1" />
   </ItemGroup>
+  <ItemGroup Label="Security pins">
+    <!-- Not referenced directly: Aspire.Hosting brings it in through StreamJsonRpc
+         2.25.29 at 2.5.302, which GHSA-qhrr-8q5h-9q3h covers. Transitive pinning lifts
+         it to a fixed 2.5 release. Remove once Aspire depends on 2.5.303 or later. -->
+    <PackageVersion Include="MessagePack" Version="2.5.307" />
+  </ItemGroup>
   <ItemGroup Label="Testing">
     <PackageVersion Include="coverlet.collector" Version="6.0.4" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
