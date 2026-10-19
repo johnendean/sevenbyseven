@@ -181,7 +181,8 @@ scripts                           the coverage gate CI and you both run
 
 Modules are separate projects so the boundaries are enforced by the compiler rather than
 by convention. Each contributes services and entity configuration through `IModule`, and
-carries its own pages.
+carries its own pages. The host references every project under `src/Modules` and finds
+their `IModule`s at startup, so adding a module needs no change to the host.
 
 ## Tests
 
