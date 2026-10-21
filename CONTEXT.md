@@ -33,11 +33,11 @@ _Avoid_: Library, Inventory, Catalogue (see below), Shelf
 ### Identifying a record
 
 **Scan**:
-A single attempt to identify a Copy from a photograph of its sleeve or centre label. A Scan lasts only until it is confirmed or abandoned; it is never kept. A Scan may stand alone, or be one of the Scans in a Stack.
+A single attempt to identify a Copy from a photograph of its sleeve or centre label. A Scan lasts only until it is confirmed or abandoned; it is never kept. A Scan may stand alone, or be one of the Scans in a Stack. A Scan that stands alone is abandoned as soon as I leave it.
 _Avoid_: Capture, Upload, Photo, Session
 
 **Stack**:
-A run of Scans captured back to back from one camera session, up to a fixed limit. A Stack holds its Scans together until each has been confirmed or abandoned, and is then gone: a Stack is no more kept than the Scans in it.
+A run of Scans captured back to back, up to a fixed limit. There is at most one Stack in progress at a time, and it may be captured in one place and worked through in another. A Stack holds its Scans together until each has been confirmed or abandoned, and is then gone: a Stack is no more kept than the Scans in it. A Stack left untouched for long enough is abandoned, along with every Scan it still holds.
 _Avoid_: Batch, Queue, Run, Crate, Session
 
 **Format**:
