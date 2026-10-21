@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using Microsoft.AspNetCore.Mvc;
 using SevenBySeven.Modules.Collection.Contracts;
 using SevenBySeven.Modules.Gigs.Contracts;
 
@@ -34,6 +35,33 @@ public class GigsApiTests
         var response = await client.PostAsync("/gigs", JsonContent.Create(new { venue = "The Social" }));
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task A_gig_past_the_limits_is_refused()
+    {
+        await using var host = await ApiHost.StartAsync();
+        using var client = host.CreateClient();
+
+        var response = await client.PostAsJsonAsync("/gigs", new GigDetails { PlayedOn = September26, Venue = new string('x', 201) }, ApiHost.Json);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(["venue"], (await response.ReadAsync<ValidationProblemDetails>()).Errors.Keys);
+        Assert.Empty(await (await client.GetAsync("/gigs")).ReadAsync<GigSummary[]>());
+    }
+
+    [Fact]
+    public async Task A_change_past_the_limits_is_refused_and_nothing_changes()
+    {
+        await using var host = await ApiHost.StartAsync();
+        using var client = host.CreateClient();
+        var gig = await CreateAsync(client);
+
+        var response = await client.PutAsJsonAsync($"/gigs/{gig.Id}", new GigDetails { PlayedOn = September26, Notes = new string('x', 4001) }, ApiHost.Json);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(["notes"], (await response.ReadAsync<ValidationProblemDetails>()).Errors.Keys);
+        Assert.Null((await SheetAsync(client, gig.Id)).Notes);
     }
 
     [Fact]

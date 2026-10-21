@@ -21,4 +21,4 @@ This is written down because a reader will find no `Result<T>` here, and will fi
 
 - An empty list, a `null` or a `false` must not mean two things. `DiscogsSearch` exists because an empty list once meant both "no matches" and "could not search", and the Format fallback treated a failure as an answer.
 - A new outside service follows Discogs: catch at the boundary, return a value that keeps failure apart from an answer, and let the page say which happened.
-- Validation of what I type stays in the forms, before anything is saved, so the exceptions thrown below them only ever mean a bug.
+- What I type is validated before anything is saved, so the exceptions thrown below that only ever mean a bug. The forms check it first, so a page can say what is wrong beside the field. The API checks it again, because it is the boundary every client crosses (docs/adr/0009), and answers a 400 that names each field instead of letting the database refuse it as a 500.

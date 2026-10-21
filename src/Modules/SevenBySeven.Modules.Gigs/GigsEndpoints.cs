@@ -33,9 +33,7 @@ internal static class GigsEndpoints
         gigs.MapPost("/", CreateAsync)
             .WithSummary("Records a Gig, with one empty Selection to start filling in.");
 
-        gigs.MapPut("/{gigId:guid}", async Task<Results<NoContent, NotFound>> (
-                Guid gigId, GigDetails details, IGigLog log, CancellationToken cancellationToken) =>
-                Outcomes.NoContentOrNotFound(await log.UpdateAsync(gigId, details, cancellationToken)))
+        gigs.MapPut("/{gigId:guid}", UpdateAsync)
             .WithSummary("Replaces what I say about a Gig itself.");
 
         gigs.MapDelete("/{gigId:guid}", async Task<Results<NoContent, NotFound>> (
@@ -69,11 +67,16 @@ internal static class GigsEndpoints
             .WithSummary("Moves a Play one place within its Selection. 404 as well when it is already at that end.");
     }
 
-    private static async Task<Created<GigSummary>> CreateAsync(
+    private static async Task<Results<Created<GigSummary>, ValidationProblem>> CreateAsync(
         GigDetails details,
         IGigLog log,
         CancellationToken cancellationToken)
     {
+        if (Validation.Problem((string.Empty, details)) is { } problem)
+        {
+            return problem;
+        }
+
         var gig = await log.CreateAsync(details, cancellationToken);
         var summary = new GigSummary(
             gig.Id,
@@ -83,5 +86,21 @@ internal static class GigsEndpoints
             gig.Selections.Sum(selection => selection.Plays.Count));
 
         return TypedResults.Created($"/gigs/{gig.Id}", summary);
+    }
+
+    private static async Task<Results<NoContent, NotFound, ValidationProblem>> UpdateAsync(
+        Guid gigId,
+        GigDetails details,
+        IGigLog log,
+        CancellationToken cancellationToken)
+    {
+        if (Validation.Problem((string.Empty, details)) is { } problem)
+        {
+            return problem;
+        }
+
+        return await log.UpdateAsync(gigId, details, cancellationToken)
+            ? TypedResults.NoContent()
+            : TypedResults.NotFound();
     }
 }

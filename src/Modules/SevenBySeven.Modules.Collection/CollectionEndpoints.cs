@@ -50,13 +50,20 @@ internal static class CollectionEndpoints
         CancellationToken cancellationToken) =>
         Outcomes.OkOrNotFound(await SheetAsync(copyId, collection, plays, cancellationToken));
 
-    private static async Task<Results<Created<CopySheet>, NotFound<ProblemDetails>>> AddAsync(
+    private static async Task<Results<Created<CopySheet>, NotFound<ProblemDetails>, ValidationProblem>> AddAsync(
         AddCopyRequest request,
         IReleaseCatalogue catalogue,
         IVinylCollection collection,
         IPlayHistory plays,
         CancellationToken cancellationToken)
     {
+        // Before the Release is fetched: a Confirmation refused afterwards would still have
+        // filled the Catalogue for nothing.
+        if (Validation.Problem((string.Empty, request), ("details", request.Details)) is { } problem)
+        {
+            return problem;
+        }
+
         if (request.DiscogsReleaseId <= 0
             || await catalogue.EnsureAsync(request.DiscogsReleaseId, cancellationToken) is not { } release)
         {
@@ -80,12 +87,21 @@ internal static class CollectionEndpoints
         return TypedResults.Created($"/collection/{copy.Id}", sheet);
     }
 
-    private static async Task<Results<NoContent, NotFound>> UpdateAsync(
+    private static async Task<Results<NoContent, NotFound, ValidationProblem>> UpdateAsync(
         Guid copyId,
         CopyDetails details,
         IVinylCollection collection,
-        CancellationToken cancellationToken) =>
-        Outcomes.NoContentOrNotFound(await collection.UpdateAsync(copyId, details, cancellationToken));
+        CancellationToken cancellationToken)
+    {
+        if (Validation.Problem((string.Empty, details)) is { } problem)
+        {
+            return problem;
+        }
+
+        return await collection.UpdateAsync(copyId, details, cancellationToken)
+            ? TypedResults.NoContent()
+            : TypedResults.NotFound();
+    }
 
     private static async Task<Results<NoContent, NotFound>> RemoveAsync(
         Guid copyId,

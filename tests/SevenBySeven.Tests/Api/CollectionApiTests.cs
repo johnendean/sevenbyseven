@@ -59,6 +59,59 @@ public class CollectionApiTests
     }
 
     [Fact]
+    public async Task A_confirmation_past_the_limits_is_refused_before_anything_is_fetched()
+    {
+        await using var host = await ApiHost.StartAsync();
+        using var client = host.CreateClient();
+
+        var response = await client.PostAsJsonAsync(
+            "/collection",
+            new AddCopyRequest(249504, new CopyDetails { Location = new string('x', 201), PricePaid = -1m }),
+            ApiHost.Json);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+
+        var problem = await response.ReadAsync<ValidationProblemDetails>();
+        Assert.Equal(["details.location", "details.pricePaid"], problem.Errors.Keys.Order());
+        Assert.Empty(host.Source.Fetched);
+        Assert.Empty(await (await client.GetAsync("/collection")).ReadAsync<CopyLine[]>());
+    }
+
+    [Fact]
+    public async Task A_confirmation_without_details_is_refused_before_anything_is_fetched()
+    {
+        await using var host = await ApiHost.StartAsync();
+        using var client = host.CreateClient();
+
+        var response = await client.PostAsync(
+            "/collection",
+            JsonContent.Create(new { discogsReleaseId = 249504, details = (object?)null }));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(["details"], (await response.ReadAsync<ValidationProblemDetails>()).Errors.Keys);
+        Assert.Empty(host.Source.Fetched);
+    }
+
+    [Fact]
+    public async Task Details_past_the_limits_are_refused_and_nothing_changes()
+    {
+        await using var host = await ApiHost.StartAsync();
+        using var client = host.CreateClient();
+        var added = await AddAsync(client, 249504);
+
+        var response = await client.PutAsJsonAsync(
+            $"/collection/{added.Id}/details",
+            new CopyDetails { Notes = new string('x', 4001), PurchasedFrom = new string('x', 201) },
+            ApiHost.Json);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(["notes", "purchasedFrom"], (await response.ReadAsync<ValidationProblemDetails>()).Errors.Keys.Order());
+
+        var found = await (await client.GetAsync($"/collection/{added.Id}")).ReadAsync<CopySheet>();
+        Assert.Null(found.Details.Notes);
+    }
+
+    [Fact]
     public async Task The_collection_lists_each_copy_with_how_it_stands()
     {
         await using var host = await ApiHost.StartAsync();
