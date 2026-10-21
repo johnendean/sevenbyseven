@@ -1,65 +1,56 @@
-using System.ComponentModel.DataAnnotations;
+using FluentValidation;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace SevenBySeven.Shared.Http;
 
 /// <summary>
-/// Checks a request body against the limits its contract declares, before anything is
-/// fetched or saved. Past those limits the database would refuse it as a 500, which says a
-/// bug where the fault is the client's (docs/adr/0008).
+/// Checks a request body against its validator before the handler runs, so nothing is
+/// fetched or saved for a request that will be refused. Past a contract's limits the
+/// database would refuse it as a 500, which says a bug where the fault is the client's
+/// (docs/adr/0008).
 /// </summary>
 public static class Validation
 {
-    /// <summary>A 400 naming each field that is out of bounds, or null when every part is fine.</summary>
-    /// <param name="parts">
-    /// Each object to check and the name it goes by in the request. Validation does not
-    /// descend into nested objects by itself, so a body that carries one names it here.
-    /// </param>
-    public static ValidationProblem? Problem(params (string Name, object? Value)[] parts)
+    /// <summary>
+    /// Refuses the endpoint's <typeparamref name="T"/> argument with a 400 naming each field
+    /// that fails its <see cref="IValidator{T}"/>, which the module must have registered.
+    /// </summary>
+    public static RouteHandlerBuilder Validates<T>(this RouteHandlerBuilder endpoint)
     {
-        var errors = new Dictionary<string, List<string>>();
+        ArgumentNullException.ThrowIfNull(endpoint);
 
-        foreach (var (name, value) in parts)
-        {
-            if (value is null)
+        return endpoint
+            .AddEndpointFilter(async (context, next) =>
             {
-                continue;
-            }
-
-            var results = new List<ValidationResult>();
-            Validator.TryValidateObject(value, new ValidationContext(value), results, validateAllProperties: true);
-
-            foreach (var result in results)
-            {
-                foreach (var member in result.MemberNames.DefaultIfEmpty(string.Empty))
+                // A body that did not bind never reaches here: binding has already answered 400.
+                if (context.Arguments.OfType<T>().FirstOrDefault() is not { } argument)
                 {
-                    var key = Field(name, member);
-
-                    if (!errors.TryGetValue(key, out var messages))
-                    {
-                        errors[key] = messages = [];
-                    }
-
-                    messages.Add(result.ErrorMessage ?? "This value is not allowed.");
+                    return await next(context);
                 }
-            }
-        }
 
-        return errors.Count == 0
-            ? null
-            : TypedResults.ValidationProblem(errors.ToDictionary(error => error.Key, error => error.Value.ToArray()));
+                var validator = context.HttpContext.RequestServices.GetRequiredService<IValidator<T>>();
+                var result = await validator.ValidateAsync(argument, context.HttpContext.RequestAborted);
+
+                if (result.IsValid)
+                {
+                    return await next(context);
+                }
+
+                return TypedResults.ValidationProblem(
+                    result.Errors
+                        .GroupBy(error => Field(error.PropertyName))
+                        .ToDictionary(errors => errors.Key, errors => errors.Select(error => error.ErrorMessage).ToArray()));
+            })
+            .ProducesValidationProblem();
     }
 
-    private static string Field(string name, string member) =>
-        (name, member) switch
-        {
-            ("", _) => Camel(member),
-            (_, "") => name,
-            _ => $"{name}.{Camel(member)}",
-        };
-
-    /// <summary>Named as the JSON names them, which is what the client sent.</summary>
-    private static string Camel(string member) =>
-        member.Length == 0 ? member : char.ToLowerInvariant(member[0]) + member[1..];
+    /// <summary>
+    /// Named as the JSON names it, which is what the client sent: "Details.Location" is
+    /// "details.location".
+    /// </summary>
+    private static string Field(string propertyName) =>
+        string.Join('.', propertyName.Split('.').Select(part =>
+            part.Length == 0 ? part : char.ToLowerInvariant(part[0]) + part[1..]));
 }

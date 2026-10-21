@@ -7,6 +7,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- The rules a request has to meet sit with the request, for any client to check. -->
+    <PackageReference Include="FluentValidation" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\SevenBySeven.Modules.Collection.Contracts\SevenBySeven.Modules.Collection.Contracts.csproj" />
   </ItemGroup>
 

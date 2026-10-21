@@ -1,7 +1,9 @@
+using FluentValidation;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using SevenBySeven.Modules.Collection.Contracts;
 using SevenBySeven.Shared.Modularity;
 
 namespace SevenBySeven.Modules.Collection;
@@ -14,8 +16,13 @@ public sealed class CollectionModule : IModule
 {
     public string Name => "Collection";
 
-    public void RegisterServices(IServiceCollection services, IConfiguration configuration) =>
+    public void RegisterServices(IServiceCollection services, IConfiguration configuration)
+    {
         services.AddScoped<IVinylCollection, VinylCollection>();
+
+        services.AddSingleton<IValidator<CopyDetails>, CopyDetailsValidator>();
+        services.AddSingleton<IValidator<AddCopyRequest>, AddCopyRequestValidator>();
+    }
 
     public void ConfigureModel(ModelBuilder modelBuilder) =>
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(CollectionModule).Assembly);

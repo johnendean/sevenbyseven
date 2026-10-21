@@ -1,4 +1,3 @@
-using System.ComponentModel.DataAnnotations;
 using SevenBySeven.Modules.Catalogue.Contracts;
 
 namespace SevenBySeven.Modules.Collection.Contracts;
@@ -25,7 +24,4 @@ public sealed record CopySheet(
 /// A Confirmation: the Release chosen from the Match Candidates, and what I know about my
 /// Copy of it. The Release is fetched into the Catalogue first if it is not held already.
 /// </summary>
-public sealed record AddCopyRequest(
-    int DiscogsReleaseId,
-    [property: Required(ErrorMessage = "A Confirmation needs the details of the Copy, even if every one of them is blank.")]
-    CopyDetails Details);
+public sealed record AddCopyRequest(int DiscogsReleaseId, CopyDetails Details);
