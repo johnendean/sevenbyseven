@@ -1,8 +1,10 @@
+using FluentValidation;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using SevenBySeven.Modules.Collection;
+using SevenBySeven.Modules.Gigs.Contracts;
 using SevenBySeven.Shared.Modularity;
 
 namespace SevenBySeven.Modules.Gigs;
@@ -22,6 +24,8 @@ public sealed class GigsModule : IModule
 
         services.AddScoped<IGigLog, GigLog>();
         services.AddScoped<IPlayHistory, PlayHistory>();
+
+        services.AddSingleton<IValidator<GigDetails>, GigDetailsValidator>();
     }
 
     public void ConfigureModel(ModelBuilder modelBuilder) =>

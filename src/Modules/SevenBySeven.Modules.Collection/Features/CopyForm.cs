@@ -6,8 +6,8 @@ namespace SevenBySeven.Modules.Collection.Features;
 
 /// <summary>
 /// The shape a Copy's details take on a page. Bound fields need setters, which
-/// <see cref="CopyDetails"/> does not have. Its lengths match the ones on CopyDetails, which
-/// the API enforces; checking here as well is what lets the page say so beside the field.
+/// <see cref="CopyDetails"/> does not have. Its limits match <see cref="CopyDetailsValidator"/>,
+/// which the API enforces; checking here as well is what lets the page say so beside the field.
 /// Shared by adding a Copy and editing one, so the two cannot drift apart.
 /// </summary>
 public sealed class CopyForm

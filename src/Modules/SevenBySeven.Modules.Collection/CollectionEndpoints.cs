@@ -22,10 +22,14 @@ internal static class CollectionEndpoints
         collection.MapGet("/{copyId:guid}", FindAsync)
             .WithSummary("One Copy with its pressing and that pressing's Tracks.");
 
+        // Checked before the Release is fetched: a Confirmation refused afterwards would
+        // still have filled the Catalogue for nothing.
         collection.MapPost("/", AddAsync)
+            .Validates<AddCopyRequest>()
             .WithSummary("A Confirmation: holds the chosen Release in the Catalogue if it is not already, and adds a Copy of it.");
 
         collection.MapPut("/{copyId:guid}/details", UpdateAsync)
+            .Validates<CopyDetails>()
             .WithSummary("Replaces what I know about a Copy.");
 
         collection.MapDelete("/{copyId:guid}", RemoveAsync)
@@ -50,20 +54,13 @@ internal static class CollectionEndpoints
         CancellationToken cancellationToken) =>
         Outcomes.OkOrNotFound(await SheetAsync(copyId, collection, plays, cancellationToken));
 
-    private static async Task<Results<Created<CopySheet>, NotFound<ProblemDetails>, ValidationProblem>> AddAsync(
+    private static async Task<Results<Created<CopySheet>, NotFound<ProblemDetails>>> AddAsync(
         AddCopyRequest request,
         IReleaseCatalogue catalogue,
         IVinylCollection collection,
         IPlayHistory plays,
         CancellationToken cancellationToken)
     {
-        // Before the Release is fetched: a Confirmation refused afterwards would still have
-        // filled the Catalogue for nothing.
-        if (Validation.Problem((string.Empty, request), ("details", request.Details)) is { } problem)
-        {
-            return problem;
-        }
-
         if (request.DiscogsReleaseId <= 0
             || await catalogue.EnsureAsync(request.DiscogsReleaseId, cancellationToken) is not { } release)
         {
@@ -87,21 +84,12 @@ internal static class CollectionEndpoints
         return TypedResults.Created($"/collection/{copy.Id}", sheet);
     }
 
-    private static async Task<Results<NoContent, NotFound, ValidationProblem>> UpdateAsync(
+    private static async Task<Results<NoContent, NotFound>> UpdateAsync(
         Guid copyId,
         CopyDetails details,
         IVinylCollection collection,
-        CancellationToken cancellationToken)
-    {
-        if (Validation.Problem((string.Empty, details)) is { } problem)
-        {
-            return problem;
-        }
-
-        return await collection.UpdateAsync(copyId, details, cancellationToken)
-            ? TypedResults.NoContent()
-            : TypedResults.NotFound();
-    }
+        CancellationToken cancellationToken) =>
+        Outcomes.NoContentOrNotFound(await collection.UpdateAsync(copyId, details, cancellationToken));
 
     private static async Task<Results<NoContent, NotFound>> RemoveAsync(
         Guid copyId,
