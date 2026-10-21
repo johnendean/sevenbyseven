@@ -503,15 +503,18 @@ else
 
             try
             {
-                stacked.Identified(
-                    await Identifier.IdentifyAsync(stacked.Scan.Image, stacked.Scan.ContentType, format));
-            }
-            catch (SleeveReadException ex)
-            {
+                var result = await Identifier.IdentifyAsync(stacked.Scan.Image, stacked.Scan.ContentType, format);
+
                 // Say what actually went wrong: a failed call reported as an unreadable
                 // photograph sends you back to the shelf for a blameless record.
-                Logger.LogError(ex, "The sleeve could not be read.");
-                stacked.Failed(ex.Message);
+                if (result.ReadFailure is { } failure)
+                {
+                    stacked.Failed(failure);
+                }
+                else
+                {
+                    stacked.Identified(result);
+                }
             }
             catch (Exception ex)
             {

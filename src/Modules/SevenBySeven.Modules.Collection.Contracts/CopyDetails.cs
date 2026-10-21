@@ -1,4 +1,4 @@
-namespace SevenBySeven.Modules.Collection.Domain;
+namespace SevenBySeven.Modules.Collection.Contracts;
 
 /// <summary>
 /// What I know about a Copy at the moment I add it. Every field is optional: a record

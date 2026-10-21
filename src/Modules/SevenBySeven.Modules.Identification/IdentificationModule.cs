@@ -1,6 +1,7 @@
 using Anthropic;
 using Anthropic.Core;
 using Anthropic.Services;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -89,4 +90,7 @@ public sealed class IdentificationModule : IModule
     public void ConfigureModel(ModelBuilder modelBuilder)
     {
     }
+
+    public void MapEndpoints(IEndpointRouteBuilder endpoints) =>
+        IdentificationEndpoints.Map(endpoints);
 }

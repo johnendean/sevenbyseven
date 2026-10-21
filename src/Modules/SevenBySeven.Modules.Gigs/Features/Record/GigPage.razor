@@ -103,7 +103,7 @@ else
                     <ul class="gig-candidates">
                         @foreach (var candidate in Matching())
                         {
-                            var release = candidate.Copy.Release!;
+                            var release = candidate.Release;
                             <li>
                                 <span class="gig-play-detail">
                                     <strong>@release.ArtistName &mdash; @release.Title</strong>
@@ -111,7 +111,7 @@ else
                                 </span>
                                 <Flags Repeat="candidate.Repeat" ThisGig="candidate.PlayedThisGig" ThisGigText="Already played tonight" />
                                 <button class="btn btn-sm btn-primary" disabled="@_busy"
-                                        @onclick="() => Change(() => Gigs.AddPlayAsync(Id, selection.Id, candidate.Copy.Id), keepSearching: true)">Add</button>
+                                        @onclick="() => Change(() => Gigs.AddPlayAsync(Id, selection.Id, candidate.CopyId), keepSearching: true)">Add</button>
                             </li>
                         }
                     </ul>
@@ -207,7 +207,7 @@ else
     }
 
     private IEnumerable<Candidate> Matching() =>
-        _candidates.Where(candidate => CopySearch.Matches(candidate.Copy.Release!, _search)).Take(MostShown);
+        _candidates.Where(candidate => CopySearch.Matches(candidate.Release, _search)).Take(MostShown);
 
     private void StartAdding(Guid selectionId)
     {

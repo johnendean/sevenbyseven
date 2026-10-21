@@ -1,4 +1,4 @@
-namespace SevenBySeven.Modules.Gigs.Domain;
+namespace SevenBySeven.Modules.Gigs.Contracts;
 
 /// <summary>What I say about a Gig itself, apart from what was played at it.</summary>
 public sealed record GigDetails

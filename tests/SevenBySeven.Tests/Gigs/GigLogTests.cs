@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using SevenBySeven.Modules.Collection.Contracts;
 using SevenBySeven.Modules.Collection.Domain;
+using SevenBySeven.Modules.Gigs.Contracts;
 using SevenBySeven.Modules.Gigs.Domain;
 
 namespace SevenBySeven.Tests.Gigs;
@@ -223,7 +225,7 @@ public class GigLogTests
 
         var candidates = await log.CandidatesAsync(tonight.Id);
 
-        Assert.Equal([fresh, repeated, alreadyTonight], candidates.Select(candidate => candidate.Copy.Id));
+        Assert.Equal([fresh, repeated, alreadyTonight], candidates.Select(candidate => candidate.CopyId));
         Assert.Equal([Repeat.None, Repeat.LastGig, Repeat.None], candidates.Select(candidate => candidate.Repeat));
         Assert.Equal([false, false, true], candidates.Select(candidate => candidate.PlayedThisGig));
     }

@@ -9,6 +9,8 @@
 
   <ItemGroup>
     <PackageReference Include="coverlet.collector" />
+    <!-- The API's endpoints are tested through the real host, in memory. -->
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <!-- The database tests run against the same Postgres the app does, in a container
          started for the run. See docs/adr/0007-tests-run-against-postgres.md. -->
@@ -22,6 +24,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\SevenBySeven.Api\SevenBySeven.Api.csproj" />
     <ProjectReference Include="..\..\src\SevenBySeven.Shared\SevenBySeven.Shared.csproj" />
     <ProjectReference Include="..\..\src\Modules\SevenBySeven.Modules.Identification\SevenBySeven.Modules.Identification.csproj" />
     <ProjectReference Include="..\..\src\Modules\SevenBySeven.Modules.Scanning\SevenBySeven.Modules.Scanning.csproj" />

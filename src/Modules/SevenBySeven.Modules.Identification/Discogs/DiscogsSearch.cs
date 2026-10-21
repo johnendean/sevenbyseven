@@ -1,4 +1,4 @@
-using SevenBySeven.Modules.Identification.Domain;
+using SevenBySeven.Modules.Identification.Contracts;
 
 namespace SevenBySeven.Modules.Identification.Discogs;
 

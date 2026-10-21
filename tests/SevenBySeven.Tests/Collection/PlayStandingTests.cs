@@ -1,5 +1,5 @@
 using System.Globalization;
-using SevenBySeven.Modules.Collection.Domain;
+using SevenBySeven.Modules.Collection.Contracts;
 
 namespace SevenBySeven.Tests.Collection;
 

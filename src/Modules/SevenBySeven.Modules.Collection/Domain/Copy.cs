@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations.Schema;
 using SevenBySeven.Modules.Catalogue.Domain;
+using SevenBySeven.Modules.Collection.Contracts;
 
 namespace SevenBySeven.Modules.Collection.Domain;
 

@@ -71,6 +71,9 @@ internal sealed class TestDatabase : IAsyncDisposable
         return new TestDatabase(server, name);
     }
 
+    /// <summary>Where this database is, for a host that opens its own connections to it.</summary>
+    public string ConnectionString => _connectionString;
+
     /// <summary>
     /// A fresh context over the same database — what a later request would see, with
     /// nothing left in the change tracker to flatter the result.

@@ -1,5 +1,5 @@
 using System.ComponentModel.DataAnnotations;
-using SevenBySeven.Modules.Gigs.Domain;
+using SevenBySeven.Modules.Gigs.Contracts;
 
 namespace SevenBySeven.Modules.Gigs.Features;
 

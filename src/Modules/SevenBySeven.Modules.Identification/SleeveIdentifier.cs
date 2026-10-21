@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Logging;
 using SevenBySeven.Modules.Identification.Barcodes;
+using SevenBySeven.Modules.Identification.Contracts;
 using SevenBySeven.Modules.Identification.Discogs;
-using SevenBySeven.Modules.Identification.Domain;
 using SevenBySeven.Modules.Identification.Vision;
 
 namespace SevenBySeven.Modules.Identification;
@@ -55,7 +55,18 @@ internal sealed class SleeveIdentifier(
         }
 
         // 2. Read whatever is printed and search on that.
-        var details = await sleeves.ReadAsync(image, contentType, cancellationToken);
+        SleeveDetails details;
+
+        try
+        {
+            details = await sleeves.ReadAsync(image, contentType, cancellationToken);
+        }
+        catch (SleeveReadException ex)
+        {
+            // The reader has already logged it. What reaches the caller is the reason, so
+            // it can say what went wrong rather than blame the photograph.
+            return IdentificationResult.Nothing() with { SearchFailed = searchFailed, ReadFailure = ex.Message };
+        }
 
         if (details.IsEmpty)
         {

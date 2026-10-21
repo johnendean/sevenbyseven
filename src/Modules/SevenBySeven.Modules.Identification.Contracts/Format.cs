@@ -1,4 +1,4 @@
-namespace SevenBySeven.Modules.Identification.Domain;
+namespace SevenBySeven.Modules.Identification.Contracts;
 
 /// <summary>
 /// The kind of vinyl record a search is limited to. An LP is its own Format even though

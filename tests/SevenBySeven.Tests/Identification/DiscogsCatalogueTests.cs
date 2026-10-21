@@ -1,5 +1,5 @@
+using SevenBySeven.Modules.Identification.Contracts;
 using SevenBySeven.Modules.Identification.Discogs;
-using SevenBySeven.Modules.Identification.Domain;
 
 namespace SevenBySeven.Tests.Identification;
 

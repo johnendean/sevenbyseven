@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using SevenBySeven.Modules.Collection;
+using SevenBySeven.Modules.Collection.Contracts;
 using SevenBySeven.Modules.Collection.Domain;
 using SevenBySeven.Modules.Gigs.Domain;
 using SevenBySeven.Shared.Persistence;

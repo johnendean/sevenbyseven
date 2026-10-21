@@ -1,4 +1,4 @@
-namespace SevenBySeven.Modules.Catalogue.Domain;
+namespace SevenBySeven.Modules.Catalogue.Contracts;
 
 /// <summary>
 /// Where a Track's BPM came from. Recorded because no catalogue source supplies

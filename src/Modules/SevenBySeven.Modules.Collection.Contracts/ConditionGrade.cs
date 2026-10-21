@@ -1,4 +1,4 @@
-namespace SevenBySeven.Modules.Collection.Domain;
+namespace SevenBySeven.Modules.Collection.Contracts;
 
 /// <summary>
 /// The Goldmine grading standard, as used by Discogs and by record dealers generally.

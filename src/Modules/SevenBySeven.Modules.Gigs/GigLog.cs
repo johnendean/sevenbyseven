@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using SevenBySeven.Modules.Catalogue;
 using SevenBySeven.Modules.Collection.Domain;
+using SevenBySeven.Modules.Gigs.Contracts;
 using SevenBySeven.Modules.Gigs.Domain;
 using SevenBySeven.Shared.Persistence;
 
@@ -55,7 +57,7 @@ internal sealed class GigLog(SevenBySevenDbContext database, IOptions<GigsOption
                         play.Id,
                         play.Sequence + 1,
                         copy.Id,
-                        copy.Release,
+                        copy.Release.ToLine(),
                         copy.IsFormer,
                         ledger.RepeatAt(record, gig.Id),
                         ledger.PlayedEarlierAt(record, gig.Id, selection.Sequence, play.Sequence));
@@ -83,7 +85,11 @@ internal sealed class GigLog(SevenBySevenDbContext database, IOptions<GigsOption
                 {
                     var record = SameRecord.Of(copy.Release!.DiscogsMasterId, copy.ReleaseId);
 
-                    return new Candidate(copy, ledger.RepeatAt(record, gigId), ledger.PlayedAt(record, gigId));
+                    return new Candidate(
+                        copy.Id,
+                        copy.Release.ToLine(),
+                        ledger.RepeatAt(record, gigId),
+                        ledger.PlayedAt(record, gigId));
                 }),
         ];
     }

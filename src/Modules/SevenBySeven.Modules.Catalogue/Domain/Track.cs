@@ -1,3 +1,5 @@
+using SevenBySeven.Modules.Catalogue.Contracts;
+
 namespace SevenBySeven.Modules.Catalogue.Domain;
 
 /// <summary>

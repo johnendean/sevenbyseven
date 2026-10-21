@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/SevenBySeven.Api/SevenBySeven.Api.csproj" />
     <Project Path="src/SevenBySeven.AppHost/SevenBySeven.AppHost.csproj" />
     <Project Path="src/SevenBySeven.ServiceDefaults/SevenBySeven.ServiceDefaults.csproj" />
     <Project Path="src/SevenBySeven.Shared/SevenBySeven.Shared.csproj" />
@@ -7,9 +8,13 @@
   </Folder>
   <Folder Name="/src/Modules/">
     <Project Path="src/Modules/SevenBySeven.Modules.Catalogue/SevenBySeven.Modules.Catalogue.csproj" />
+    <Project Path="src/Modules/SevenBySeven.Modules.Catalogue.Contracts/SevenBySeven.Modules.Catalogue.Contracts.csproj" />
     <Project Path="src/Modules/SevenBySeven.Modules.Collection/SevenBySeven.Modules.Collection.csproj" />
+    <Project Path="src/Modules/SevenBySeven.Modules.Collection.Contracts/SevenBySeven.Modules.Collection.Contracts.csproj" />
     <Project Path="src/Modules/SevenBySeven.Modules.Gigs/SevenBySeven.Modules.Gigs.csproj" />
+    <Project Path="src/Modules/SevenBySeven.Modules.Gigs.Contracts/SevenBySeven.Modules.Gigs.Contracts.csproj" />
     <Project Path="src/Modules/SevenBySeven.Modules.Identification/SevenBySeven.Modules.Identification.csproj" />
+    <Project Path="src/Modules/SevenBySeven.Modules.Identification.Contracts/SevenBySeven.Modules.Identification.Contracts.csproj" />
     <Project Path="src/Modules/SevenBySeven.Modules.Scanning/SevenBySeven.Modules.Scanning.csproj" />
   </Folder>
   <Folder Name="/tests/">

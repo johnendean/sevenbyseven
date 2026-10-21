@@ -1,4 +1,4 @@
-namespace SevenBySeven.Modules.Identification.Domain;
+namespace SevenBySeven.Modules.Identification.Contracts;
 
 /// <summary>
 /// One of the Releases put forward as the possible answer to a Scan. Never persisted:

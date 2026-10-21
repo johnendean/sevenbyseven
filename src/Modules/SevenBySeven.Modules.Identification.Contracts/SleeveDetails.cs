@@ -1,4 +1,4 @@
-namespace SevenBySeven.Modules.Identification.Domain;
+namespace SevenBySeven.Modules.Identification.Contracts;
 
 /// <summary>
 /// What could be read off a photographed sleeve or centre label. Every field is

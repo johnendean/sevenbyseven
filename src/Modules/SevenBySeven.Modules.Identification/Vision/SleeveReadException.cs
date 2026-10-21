@@ -4,7 +4,9 @@ namespace SevenBySeven.Modules.Identification.Vision;
 /// The sleeve could not be read at all: the call failed, or was never made. This is a
 /// different thing from reading a sleeve and finding nothing legible on it, which is an
 /// empty <see cref="Domain.SleeveDetails"/> and an honest answer. Conflating the two
-/// tells the user to photograph the centre label when the fault is ours.
+/// tells the user to photograph the centre label when the fault is ours. It never leaves
+/// the module: <see cref="SleeveIdentifier"/> turns it into
+/// <see cref="Contracts.IdentificationResult.ReadFailure"/> (docs/adr/0008).
 /// </summary>
-public sealed class SleeveReadException(string message, Exception? innerException = null)
+internal sealed class SleeveReadException(string message, Exception? innerException = null)
     : Exception(message, innerException);

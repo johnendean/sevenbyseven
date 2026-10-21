@@ -11,11 +11,14 @@
                Aspire orchestration: a dozen lines that only mean anything once the real
                containers are up, so there is nothing here a unit test could reach.
 
-               The host and ServiceDefaults are composition and unmodified Aspire
-               template code — the same argument. They are named rather than left out
-               by accident: neither is referenced by the test project today, so coverlet
-               never loads them, and a single ProjectReference added later would drop
-               180 uncovered lines into the figure without anything being less tested. -->
+               The web host and ServiceDefaults are composition and unmodified Aspire
+               template code — the same argument. ServiceDefaults is loaded by the API
+               tests, so leaving it unnamed would drop 180 uncovered lines into the
+               figure without anything being less tested.
+
+               The API host is in the figure. It holds the error handling and the
+               module composition every client depends on, and its tests drive it
+               end to end against Postgres (docs/adr/0009). -->
           <Exclude>[SevenBySeven.AppHost]*,[SevenBySeven.Web]*,[SevenBySeven.ServiceDefaults]*</Exclude>
           <!-- EF writes the migrations and the model snapshot, and they outnumber the
                code by some margin. Counting them buries the figure that matters: a new

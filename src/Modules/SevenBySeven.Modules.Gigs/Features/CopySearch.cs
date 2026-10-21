@@ -1,4 +1,4 @@
-using SevenBySeven.Modules.Catalogue.Domain;
+using SevenBySeven.Modules.Catalogue.Contracts;
 
 namespace SevenBySeven.Modules.Gigs.Features;
 
@@ -9,7 +9,7 @@ namespace SevenBySeven.Modules.Gigs.Features;
 /// </summary>
 public static class CopySearch
 {
-    public static bool Matches(Release release, string? text)
+    public static bool Matches(ReleaseLine release, string? text)
     {
         ArgumentNullException.ThrowIfNull(release);
 

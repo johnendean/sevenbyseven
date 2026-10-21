@@ -1,3 +1,4 @@
+using SevenBySeven.Modules.Catalogue.Contracts;
 using SevenBySeven.Modules.Catalogue.Domain;
 
 namespace SevenBySeven.Tests.Catalogue;

@@ -1,8 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using SevenBySeven.Modules.Catalogue.Domain;
 using SevenBySeven.Modules.Collection;
+using SevenBySeven.Modules.Collection.Contracts;
 using SevenBySeven.Modules.Collection.Domain;
-using SevenBySeven.Modules.Gigs.Domain;
+using SevenBySeven.Modules.Gigs.Contracts;
 using SevenBySeven.Shared.Persistence;
 
 namespace SevenBySeven.Tests.Collection;

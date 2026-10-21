@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using SevenBySeven.Modules.Collection.Contracts;
 using SevenBySeven.Modules.Collection.Domain;
 
 namespace SevenBySeven.Modules.Collection.Features;
