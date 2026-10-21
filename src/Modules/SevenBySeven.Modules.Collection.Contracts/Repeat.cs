@@ -1,4 +1,4 @@
-namespace SevenBySeven.Modules.Collection.Domain;
+namespace SevenBySeven.Modules.Collection.Contracts;
 
 /// <summary>
 /// Whether playing a record now would be a Repeat, and how pointedly. A Repeat is

@@ -1,4 +1,4 @@
-using SevenBySeven.Modules.Collection.Domain;
+using SevenBySeven.Modules.Collection.Contracts;
 
 namespace SevenBySeven.Modules.Collection;
 

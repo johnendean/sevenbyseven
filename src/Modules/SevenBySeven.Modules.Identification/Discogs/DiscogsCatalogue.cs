@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SevenBySeven.Modules.Catalogue;
 using SevenBySeven.Modules.Catalogue.Domain;
-using SevenBySeven.Modules.Identification.Domain;
+using SevenBySeven.Modules.Identification.Contracts;
 
 namespace SevenBySeven.Modules.Identification.Discogs;
 

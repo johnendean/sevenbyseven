@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
+using SevenBySeven.Modules.Collection.Contracts;
 using SevenBySeven.Modules.Collection.Domain;
-using SevenBySeven.Modules.Gigs.Domain;
+using SevenBySeven.Modules.Gigs.Contracts;
 
 namespace SevenBySeven.Tests.Gigs;
 

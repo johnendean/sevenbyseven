@@ -1,3 +1,4 @@
+using SevenBySeven.Modules.Gigs.Contracts;
 using SevenBySeven.Modules.Gigs.Domain;
 
 namespace SevenBySeven.Modules.Gigs;

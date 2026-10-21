@@ -3,7 +3,7 @@ using Anthropic.Models.Messages;
 using Anthropic.Services;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using SevenBySeven.Modules.Identification.Domain;
+using SevenBySeven.Modules.Identification.Contracts;
 
 namespace SevenBySeven.Modules.Identification.Vision;
 

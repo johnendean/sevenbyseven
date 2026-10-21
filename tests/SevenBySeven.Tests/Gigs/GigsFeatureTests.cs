@@ -1,6 +1,7 @@
-using SevenBySeven.Modules.Collection.Domain;
+using SevenBySeven.Modules.Catalogue;
+using SevenBySeven.Modules.Collection.Contracts;
 using SevenBySeven.Modules.Gigs;
-using SevenBySeven.Modules.Gigs.Domain;
+using SevenBySeven.Modules.Gigs.Contracts;
 using SevenBySeven.Modules.Gigs.Features;
 
 namespace SevenBySeven.Tests.Gigs;
@@ -33,7 +34,7 @@ public class GigsFeatureTests
     [InlineData(null, false)]
     public void A_record_is_found_by_every_word_typed(string? text, bool found)
     {
-        Assert.Equal(found, CopySearch.Matches(TestDatabase.AnyRelease(), text));
+        Assert.Equal(found, CopySearch.Matches(TestDatabase.AnyRelease().ToLine(), text));
     }
 
     [Fact]
@@ -73,7 +74,7 @@ public class GigsFeatureTests
     [Fact]
     public void A_sheet_counts_every_play_across_its_selections()
     {
-        var release = TestDatabase.AnyRelease();
+        var release = TestDatabase.AnyRelease().ToLine();
         PlayLine Line(int number) => new(Guid.CreateVersion7(), number, Guid.CreateVersion7(), release, false, Repeat.None, false);
 
         var sheet = new GigSheet(

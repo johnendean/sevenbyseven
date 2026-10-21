@@ -1,4 +1,4 @@
-namespace SevenBySeven.Modules.Identification.Domain;
+namespace SevenBySeven.Modules.Identification.Contracts;
 
 /// <summary>Which piece of evidence produced the candidates.</summary>
 public enum IdentificationRoute
@@ -40,6 +40,13 @@ public sealed record IdentificationResult(
     /// be on Discogs, and saying otherwise sends me back to the shelf for nothing.
     /// </summary>
     public bool SearchFailed { get; init; }
+
+    /// <summary>
+    /// Why the sleeve could not be read at all, in the vision API's own words, or null when
+    /// it was read. A failed reading is not an illegible photograph: reporting it as one
+    /// sends me back to the shelf to re-photograph a blameless record.
+    /// </summary>
+    public string? ReadFailure { get; init; }
 
     public static IdentificationResult Nothing(SleeveDetails? details = null) =>
         new([], details ?? new SleeveDetails(), IdentificationRoute.None);

@@ -1,8 +1,8 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using SevenBySeven.Modules.Identification;
 using SevenBySeven.Modules.Identification.Barcodes;
+using SevenBySeven.Modules.Identification.Contracts;
 using SevenBySeven.Modules.Identification.Discogs;
-using SevenBySeven.Modules.Identification.Domain;
 using SevenBySeven.Modules.Identification.Vision;
 
 namespace SevenBySeven.Tests.Identification;
@@ -87,6 +87,31 @@ public class SleeveIdentifierTests
         Assert.Equal(IdentificationRoute.None, result.Route);
         Assert.False(result.HasCandidates);
         Assert.Empty(catalogue.Queries);
+    }
+
+    [Fact]
+    public async Task A_sleeve_that_could_not_be_read_says_why_rather_than_looking_illegible()
+    {
+        var catalogue = new FakeCatalogue(_ => [Candidate(5)]);
+        var sleeves = new FailingSleeveReader("The sleeve could not be read. Anthropic is unreachable.");
+        var identifier = Build(new FakeBarcodeScanner(null), sleeves, catalogue);
+
+        var result = await identifier.IdentifyAsync(AnyImage, "image/jpeg");
+
+        Assert.Equal("The sleeve could not be read. Anthropic is unreachable.", result.ReadFailure);
+        Assert.False(result.HasCandidates);
+        Assert.Empty(catalogue.Queries);
+    }
+
+    [Fact]
+    public async Task A_sleeve_that_was_read_has_no_failure_to_report()
+    {
+        var catalogue = new FakeCatalogue(_ => []);
+        var identifier = Build(new FakeBarcodeScanner(null), new FakeSleeveReader(new SleeveDetails()), catalogue);
+
+        var result = await identifier.IdentifyAsync(AnyImage, "image/jpeg");
+
+        Assert.Null(result.ReadFailure);
     }
 
     [Fact]
@@ -294,6 +319,13 @@ public class SleeveIdentifierTests
             Calls++;
             return Task.FromResult(details);
         }
+    }
+
+    private sealed class FailingSleeveReader(string message) : ISleeveReader
+    {
+        public Task<SleeveDetails> ReadAsync(
+            ReadOnlyMemory<byte> image, string contentType, CancellationToken cancellationToken = default) =>
+            throw new SleeveReadException(message);
     }
 
     private sealed class FakeCatalogue(Func<DiscogsQuery, DiscogsSearch> respond) : IDiscogsCatalogue

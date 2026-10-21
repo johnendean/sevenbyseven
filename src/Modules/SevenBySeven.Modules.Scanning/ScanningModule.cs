@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -22,6 +23,10 @@ public sealed class ScanningModule : IModule
     }
 
     public void ConfigureModel(ModelBuilder modelBuilder)
+    {
+    }
+
+    public void MapEndpoints(IEndpointRouteBuilder endpoints)
     {
     }
 }

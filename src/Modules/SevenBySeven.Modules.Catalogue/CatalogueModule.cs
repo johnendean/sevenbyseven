@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -18,4 +19,7 @@ public sealed class CatalogueModule : IModule
 
     public void ConfigureModel(ModelBuilder modelBuilder) =>
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(CatalogueModule).Assembly);
+
+    public void MapEndpoints(IEndpointRouteBuilder endpoints) =>
+        CatalogueEndpoints.Map(endpoints);
 }

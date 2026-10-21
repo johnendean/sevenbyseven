@@ -1,4 +1,4 @@
-namespace SevenBySeven.Modules.Collection.Domain;
+namespace SevenBySeven.Modules.Collection.Contracts;
 
 /// <summary>
 /// How Goldmine grades are written down. Dealers and Discogs both use the

@@ -17,6 +17,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\SevenBySeven.Shared\SevenBySeven.Shared.csproj" />
+    <ProjectReference Include="..\SevenBySeven.Modules.Collection.Contracts\SevenBySeven.Modules.Collection.Contracts.csproj" />
     <ProjectReference Include="..\SevenBySeven.Modules.Catalogue\SevenBySeven.Modules.Catalogue.csproj" />
   </ItemGroup>
 

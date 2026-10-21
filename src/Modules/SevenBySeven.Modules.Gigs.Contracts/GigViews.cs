@@ -1,7 +1,7 @@
-using SevenBySeven.Modules.Catalogue.Domain;
-using SevenBySeven.Modules.Collection.Domain;
+using SevenBySeven.Modules.Catalogue.Contracts;
+using SevenBySeven.Modules.Collection.Contracts;
 
-namespace SevenBySeven.Modules.Gigs.Domain;
+namespace SevenBySeven.Modules.Gigs.Contracts;
 
 /// <summary>A Gig as a line in a list of them.</summary>
 public sealed record GigSummary(Guid Id, DateOnly PlayedOn, string? Venue, int Selections, int Plays);
@@ -27,10 +27,10 @@ public sealed record PlayLine(
     Guid Id,
     int Number,
     Guid CopyId,
-    Release Release,
+    ReleaseLine Release,
     bool IsFormer,
     Repeat Repeat,
     bool PlayedEarlierThisGig);
 
 /// <summary>A Copy that could be added to a Gig, and what adding it would amount to.</summary>
-public sealed record Candidate(Copy Copy, Repeat Repeat, bool PlayedThisGig);
+public sealed record Candidate(Guid CopyId, ReleaseLine Release, Repeat Repeat, bool PlayedThisGig);

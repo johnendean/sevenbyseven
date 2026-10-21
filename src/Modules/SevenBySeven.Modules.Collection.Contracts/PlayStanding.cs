@@ -1,4 +1,4 @@
-namespace SevenBySeven.Modules.Collection.Domain;
+namespace SevenBySeven.Modules.Collection.Contracts;
 
 /// <summary>
 /// How a record stands in my play history: how many times it has been played across every
