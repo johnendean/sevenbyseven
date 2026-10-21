@@ -48,8 +48,12 @@ public class CopyValidatorsTests
         };
 
         Assert.Equal(
-            [nameof(CopyDetails.Location), nameof(CopyDetails.Notes), nameof(CopyDetails.PurchasedFrom)],
-            Details.Validate(details).Errors.Select(error => error.PropertyName).Order());
+            [
+                (nameof(CopyDetails.Location), "A location can be at most 200 characters."),
+                (nameof(CopyDetails.Notes), "Notes can be at most 4,000 characters."),
+                (nameof(CopyDetails.PurchasedFrom), "Where it was bought can be at most 200 characters."),
+            ],
+            Details.Validate(details).Errors.Select(error => (error.PropertyName, error.ErrorMessage)).Order());
     }
 
     [Fact]

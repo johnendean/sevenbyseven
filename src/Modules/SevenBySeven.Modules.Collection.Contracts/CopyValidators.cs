@@ -14,9 +14,17 @@ public sealed class CopyDetailsValidator : AbstractValidator<CopyDetails>
             .InclusiveBetween(0m, 1_000_000m)
             .WithMessage("A price cannot be negative, or more than a million.");
 
-        RuleFor(details => details.PurchasedFrom).MaximumLength(200);
-        RuleFor(details => details.Location).MaximumLength(200);
-        RuleFor(details => details.Notes).MaximumLength(4000);
+        RuleFor(details => details.PurchasedFrom)
+            .MaximumLength(200)
+            .WithMessage("Where it was bought can be at most 200 characters.");
+
+        RuleFor(details => details.Location)
+            .MaximumLength(200)
+            .WithMessage("A location can be at most 200 characters.");
+
+        RuleFor(details => details.Notes)
+            .MaximumLength(4000)
+            .WithMessage("Notes can be at most 4,000 characters.");
     }
 }
 
