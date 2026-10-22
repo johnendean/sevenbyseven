@@ -4,7 +4,7 @@
 @inject IJSRuntime JS
 @inject NavigationManager Navigation
 @inject ScanSession Session
-@inject ISleeveIdentifier Identifier
+@inject IdentificationClient Identifier
 @inject ILogger<ScanPage> Logger
 
 <PageTitle>Scan a record</PageTitle>
@@ -148,7 +148,7 @@ else
 }
 
 @code {
-    private const string ModulePath = "./_content/SevenBySeven.Modules.Scanning/js/camera.js";
+    private const string ModulePath = "./js/camera.js";
 
     /// <summary>Long edge in pixels. Enough for a catalogue number, small enough to send.</summary>
     private const int MaxDimension = 1600;
@@ -340,7 +340,7 @@ else
 
         try
         {
-            var result = await Identifier.IdentifyAsync(scan.Image, scan.ContentType);
+            var result = await Identifier.IdentifyAsync(scan.Image);
 
             // Say what actually went wrong. Reporting a failed call as an unreadable
             // photograph sends you back to the shelf to re-photograph a blameless record.
@@ -350,7 +350,7 @@ else
         catch (Exception ex)
         {
             Logger.LogError(ex, "Identification failed.");
-            _error = "Identification failed. The Discogs or Anthropic call may not be configured.";
+            _error = "Identification failed. The API may be unreachable, or Discogs or Anthropic may not be configured.";
         }
         finally
         {

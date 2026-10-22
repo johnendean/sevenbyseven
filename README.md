@@ -114,16 +114,20 @@ cataloguing and put it back afterwards:
 Scanning__MaxStackSize=20 dotnet run --project src/SevenBySeven.AppHost
 ```
 
-The value is clamped — photographs are held in memory until they are confirmed or
-abandoned, so an unchecked one is measured in tens of megabytes per user. The detector's
+The value is clamped — photographs are held in the API's memory until they are confirmed
+or abandoned, so an unchecked one is measured in tens of megabytes. The detector's
 own thresholds sit under `Scanning__Detection__*` and are worth touching only if the
 highlight misbehaves in your room; what they mean, and why detection is a browser
 heuristic rather than a call to a model, is in
 [ADR 0005](./docs/adr/0005-record-detection-is-a-browser-heuristic.md).
 
-A Stack lives in the browser's connection to the server. It survives moving around the
-app — a marker in the header says one is in progress — but closing the tab ends it, and
-the photographs go with it, exactly as a single Scan does.
+A Stack lives in the API, in memory, and there is only ever one. It survives moving around
+the app and closing the tab, and it can be captured on one device and worked through on
+another; a marker in the header says one is in progress, wherever you look. A Stack left
+untouched for four hours is given up on, photographs and all — `Scanning__StackIdleTimeout`
+changes that — and restarting the API ends it too. Why it lives there is in
+[ADR 0010](./docs/adr/0010-a-stack-lives-in-the-api.md). A single Scan is still held by
+the page you took it on, and leaving the page ends it.
 
 Since it needs the live camera, a Stack is unavailable in the plain-HTTP case above.
 Scan records one at a time from your phone.

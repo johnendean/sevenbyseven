@@ -1,10 +1,11 @@
-using SevenBySeven.Modules.Scanning.Domain;
+using SevenBySeven.Modules.Scanning.Contracts;
 
-namespace SevenBySeven.Modules.Scanning;
+namespace SevenBySeven.Web.Scanning;
 
 /// <summary>
-/// Holds the Scan in progress for one user's circuit. Scoped, never persisted: when
-/// the circuit ends the photograph goes with it, which is the whole storage policy.
+/// Holds a Scan that stands alone for one user's circuit. Scoped, never persisted: when the
+/// circuit ends the photograph goes with it, which is the whole storage policy. A Scan in a
+/// Stack is held by the API instead (docs/adr/0010).
 /// </summary>
 public sealed class ScanSession
 {

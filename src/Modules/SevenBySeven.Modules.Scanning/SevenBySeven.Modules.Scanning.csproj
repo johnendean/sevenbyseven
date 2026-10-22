@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Razor">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -6,21 +6,13 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
-
   <ItemGroup>
     <InternalsVisibleTo Include="SevenBySeven.Tests" />
   </ItemGroup>
 
   <ItemGroup>
-    <SupportedPlatform Include="browser" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.Components.Web" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\..\SevenBySeven.Shared\SevenBySeven.Shared.csproj" />
+    <ProjectReference Include="..\SevenBySeven.Modules.Scanning.Contracts\SevenBySeven.Modules.Scanning.Contracts.csproj" />
     <ProjectReference Include="..\SevenBySeven.Modules.Identification\SevenBySeven.Modules.Identification.csproj" />
     <ProjectReference Include="..\SevenBySeven.Modules.Catalogue\SevenBySeven.Modules.Catalogue.csproj" />
     <ProjectReference Include="..\SevenBySeven.Modules.Collection\SevenBySeven.Modules.Collection.csproj" />

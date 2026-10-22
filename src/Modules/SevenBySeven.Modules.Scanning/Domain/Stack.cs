@@ -1,11 +1,12 @@
 using SevenBySeven.Modules.Identification.Contracts;
+using SevenBySeven.Modules.Scanning.Contracts;
 
 namespace SevenBySeven.Modules.Scanning.Domain;
 
 /// <summary>
-/// A run of Scans captured back to back from one camera session. A Stack holds its Scans
-/// together until each has been confirmed or abandoned, and is then gone: a Stack is no
-/// more kept than the Scans in it.
+/// A run of Scans captured back to back. A Stack holds its Scans together until each has
+/// been confirmed or abandoned, and is then gone: a Stack is no more kept than the Scans in
+/// it. There is at most one, held by <see cref="StackHolder"/>.
 /// </summary>
 public sealed class Stack
 {

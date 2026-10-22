@@ -1,9 +1,10 @@
-namespace SevenBySeven.Modules.Scanning.Domain;
+namespace SevenBySeven.Modules.Scanning.Contracts;
 
 /// <summary>
-/// A single attempt to identify a Copy from a photograph. A Scan is ephemeral: it
-/// lives in the user's circuit until it is confirmed or abandoned, and the photograph
-/// is discarded either way — see docs/adr/0002.
+/// A single attempt to identify a Copy from a photograph. A Scan is ephemeral: it lasts
+/// until it is confirmed or abandoned, and the photograph is discarded either way — see
+/// docs/adr/0002. One that stands alone is held by the page looking at it; one in a Stack
+/// is held by the API (docs/adr/0010).
 /// </summary>
 public sealed class Scan
 {

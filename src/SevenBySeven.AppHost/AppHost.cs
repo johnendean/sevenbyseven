@@ -18,10 +18,9 @@ var api = builder.AddProject<Projects.SevenBySeven_Api>("api")
     .WaitFor(database)
     .WithHttpHealthCheck("/health");
 
-// Waits for the API so that the migrations have run before anything here touches the
-// database, which Scanning still does in-process until the Stack moves into the API.
+// The web app reaches everything through the API and holds no database connection of
+// its own. It waits for the API to be healthy so its first page has something to read.
 builder.AddProject<Projects.SevenBySeven_Web>("web")
-    .WithReference(database)
     .WithReference(api)
     .WaitFor(api)
     .WithExternalHttpEndpoints();

@@ -1,4 +1,4 @@
-namespace SevenBySeven.Modules.Scanning.Domain;
+namespace SevenBySeven.Modules.Scanning.Contracts;
 
 /// <summary>How a Scan's photograph reached us.</summary>
 public enum CaptureSource
