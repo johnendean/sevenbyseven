@@ -16,8 +16,10 @@ public sealed class StackHolder(IOptions<ScanningOptions> options, TimeProvider 
 {
     private readonly Lock _gate = new();
     private readonly List<Channel<long>> _watchers = [];
-    private readonly Channel<(StackedScan Scan, Format Format)> _captured =
-        Channel.CreateUnbounded<(StackedScan, Format)>(new UnboundedChannelOptions { SingleReader = true });
+    // Ids, not Scans: the Stack is the only thing that holds a photograph, so ending it lets
+    // every photograph go at once, even those still waiting their turn here.
+    private readonly Channel<(Guid ScanId, Format Format)> _captured =
+        Channel.CreateUnbounded<(Guid, Format)>(new UnboundedChannelOptions { SingleReader = true });
 
     private Stack? _current;
     private StackDefaults _defaults = StackDefaults.None;
@@ -26,8 +28,8 @@ public sealed class StackHolder(IOptions<ScanningOptions> options, TimeProvider 
 
     public int MaxStackSize => options.Value.MaxStackSize;
 
-    /// <summary>Scans waiting their turn to be identified, oldest first.</summary>
-    internal ChannelReader<(StackedScan Scan, Format Format)> Captured => _captured.Reader;
+    /// <summary>Scans waiting their turn to be identified, oldest first, by id.</summary>
+    internal ChannelReader<(Guid ScanId, Format Format)> Captured => _captured.Reader;
 
     public StackSheet? Current
     {
@@ -115,7 +117,7 @@ public sealed class StackHolder(IOptions<ScanningOptions> options, TimeProvider 
             }
 
             var stacked = stack.Add(scan);
-            _captured.Writer.TryWrite((stacked, stack.Format));
+            _captured.Writer.TryWrite((stacked.Id, stack.Format));
             Changed();
 
             return CaptureOutcome.Added(stacked.ToLine());
@@ -178,6 +180,18 @@ public sealed class StackHolder(IOptions<ScanningOptions> options, TimeProvider 
 
     /// <summary>The Copy could not be added: the claimed Scan is untouched, and can be tried again.</summary>
     public void Unclaimed(Guid scanId) => Settle(scanId, scan => scan.ConfirmationFailed());
+
+    /// <summary>
+    /// A queued Scan, when its turn comes, if it still wants identifying: null once its Stack
+    /// has gone or it has been given up on, so the worker moves on to the next.
+    /// </summary>
+    internal StackedScan? Waiting(Guid scanId)
+    {
+        lock (_gate)
+        {
+            return Find(scanId) is { Status: StackedScanStatus.Identifying } scan ? scan : null;
+        }
+    }
 
     internal void Identified(StackedScan scan, IdentificationResult result)
     {

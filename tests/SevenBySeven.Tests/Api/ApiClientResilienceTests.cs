@@ -65,6 +65,22 @@ public class ApiClientResilienceTests
     }
 
     [Fact]
+    public void Identification_is_not_cut_off_by_the_client_s_own_timeout()
+    {
+        // A bare HttpClient gives up after 100 seconds, whatever the pipeline allows. Adding
+        // the standard resilience handler sets it to infinite, so the pipeline's limits are
+        // the only ones. That is the library's doing, not ours, and this keeps it so.
+        var builder = Host.CreateApplicationBuilder();
+        builder.AddServiceDefaults();
+        builder.Services.AddApiClients();
+        using var services = builder.Services.BuildServiceProvider();
+
+        var http = services.GetRequiredService<IHttpClientFactory>().CreateClient(nameof(IdentificationClient));
+
+        Assert.Equal(Timeout.InfiniteTimeSpan, http.Timeout);
+    }
+
+    [Fact]
     public async Task Those_are_the_options_identification_s_pipeline_reads()
     {
         // Proves the name, not the value: a short limit under it must cut a slow call off.

@@ -83,9 +83,34 @@ public class StackHolderTests
         var added = holder.Add(AnyScan()).Scan!;
 
         Assert.True(holder.Captured.TryRead(out var queued));
-        Assert.Equal(added.Id, queued.Scan.Id);
+        Assert.Equal(added.Id, queued.ScanId);
         Assert.Equal(Format.LP, queued.Format);
         Assert.Equal(StackedScanStatus.Identifying, added.Status);
+    }
+
+    [Fact]
+    public void A_stack_let_go_leaves_nothing_waiting_to_be_identified()
+    {
+        // The queue holds ids, so discarding is what frees the photographs, even ones still
+        // waiting behind a slow identification.
+        var holder = Holder();
+        holder.Begin(Format.Vinyl);
+        holder.Add(AnyScan());
+        holder.Discard();
+
+        Assert.True(holder.Captured.TryRead(out var queued));
+        Assert.Null(holder.Waiting(queued.ScanId));
+    }
+
+    [Fact]
+    public void A_scan_given_up_on_before_its_turn_is_not_identified()
+    {
+        var holder = Holder();
+        holder.Begin(Format.Vinyl);
+        holder.Abandon(holder.Add(AnyScan()).Scan!.Id);
+
+        Assert.True(holder.Captured.TryRead(out var queued));
+        Assert.Null(holder.Waiting(queued.ScanId));
     }
 
     [Fact]
@@ -96,7 +121,7 @@ public class StackHolderTests
         holder.Add(AnyScan());
         holder.Captured.TryRead(out var queued);
 
-        holder.Identified(queued.Scan, IdentificationResult.Nothing() with { ReadFailure = "Overloaded." });
+        holder.Identified(holder.Waiting(queued.ScanId)!, IdentificationResult.Nothing() with { ReadFailure = "Overloaded." });
 
         var line = holder.Current!.Scans.Single();
         Assert.Equal(StackedScanStatus.Unreadable, line.Status);
@@ -225,7 +250,7 @@ public class StackHolderTests
         holder.Captured.TryRead(out var queued);
 
         _clock.Advance(TimeSpan.FromHours(3));
-        holder.Identified(queued.Scan, new IdentificationResult([KindOfBlue], new SleeveDetails(), IdentificationRoute.Barcode));
+        holder.Identified(holder.Waiting(queued.ScanId)!, new IdentificationResult([KindOfBlue], new SleeveDetails(), IdentificationRoute.Barcode));
         _clock.Advance(TimeSpan.FromHours(1));
 
         Assert.True(holder.AbandonIfIdle());
@@ -263,7 +288,7 @@ public class StackHolderTests
         holder.Begin(Format.Vinyl);
         var id = holder.Add(AnyScan()).Scan!.Id;
         holder.Captured.TryRead(out var queued);
-        holder.Identified(queued.Scan, new IdentificationResult([KindOfBlue], new SleeveDetails(), IdentificationRoute.Barcode));
+        holder.Identified(holder.Waiting(queued.ScanId)!, new IdentificationResult([KindOfBlue], new SleeveDetails(), IdentificationRoute.Barcode));
 
         return (holder, id);
     }

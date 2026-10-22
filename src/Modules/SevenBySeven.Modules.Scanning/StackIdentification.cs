@@ -19,10 +19,10 @@ internal sealed class StackIdentification(
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        await foreach (var (scan, format) in holder.Captured.ReadAllAsync(stoppingToken))
+        await foreach (var (scanId, format) in holder.Captured.ReadAllAsync(stoppingToken))
         {
-            // Given up on while it waited its turn: nobody wants the answer.
-            if (scan.IsResolved)
+            // Given up on, or its Stack let go, while it waited its turn: nobody wants the answer.
+            if (holder.Waiting(scanId) is not { } scan)
             {
                 continue;
             }

@@ -14,6 +14,10 @@ public sealed class StackWatch(StackClient stacks, ILogger<StackWatch> logger) :
     private static readonly TimeSpan Reconnect = TimeSpan.FromSeconds(3);
 
     private readonly CancellationTokenSource _stopping = new();
+
+    // One read at a time. The listener and the page both read after a change, and a read
+    // that started earlier must not land later and put back what was there before.
+    private readonly SemaphoreSlim _reading = new(1, 1);
     private Task? _listening;
 
     /// <summary>The Stack as it was last read. Null when there is none, or before the first read.</summary>
@@ -31,8 +35,18 @@ public sealed class StackWatch(StackClient stacks, ILogger<StackWatch> logger) :
     /// <summary>Reads the Stack now, after a change made from here, rather than waiting for its event.</summary>
     public async Task RefreshAsync(CancellationToken cancellationToken = default)
     {
-        Current = await stacks.CurrentAsync(cancellationToken);
-        IsLoaded = true;
+        await _reading.WaitAsync(cancellationToken);
+
+        try
+        {
+            Current = await stacks.CurrentAsync(cancellationToken);
+            IsLoaded = true;
+        }
+        finally
+        {
+            _reading.Release();
+        }
+
         Changed?.Invoke();
     }
 
@@ -79,5 +93,6 @@ public sealed class StackWatch(StackClient stacks, ILogger<StackWatch> logger) :
         }
 
         _stopping.Dispose();
+        _reading.Dispose();
     }
 }
