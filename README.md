@@ -20,11 +20,11 @@ are in [docs/adr](./docs/adr).
 
 ## Configuration
 
-The Discogs token is read from user secrets on the web project. It does not belong in
+The Discogs token is read from user secrets on the API project. It does not belong in
 `appsettings.json`.
 
 ```bash
-dotnet user-secrets set "Discogs:PersonalAccessToken" "<token>" --project src/SevenBySeven.Web
+dotnet user-secrets set "Discogs:PersonalAccessToken" "<token>" --project src/SevenBySeven.Api
 ```
 
 For Anthropic, sign in with the [`ant` CLI](https://github.com/anthropics/anthropic-cli)

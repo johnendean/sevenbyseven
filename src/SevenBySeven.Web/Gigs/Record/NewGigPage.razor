@@ -1,6 +1,6 @@
 @page "/gigs/new"
 @rendermode InteractiveServer
-@inject IGigLog Gigs
+@inject GigsClient Gigs
 @inject NavigationManager Navigation
 @inject ILogger<NewGigPage> Logger
 
@@ -15,6 +15,7 @@
 
 <EditForm Model="_form" OnValidSubmit="Create">
     <DataAnnotationsValidator />
+    <ContractValidator TContract="GigDetails" Details="_form.Draft" />
 
     <GigDetailsFields Form="_form" />
 
@@ -52,7 +53,7 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Recording a gig failed.");
-            _error = "The gig could not be saved. The database may be unreachable.";
+            _error = "The gig could not be saved. The API may be unreachable.";
         }
         finally
         {

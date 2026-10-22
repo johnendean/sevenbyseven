@@ -1,21 +1,21 @@
 using System.ComponentModel.DataAnnotations;
 using SevenBySeven.Modules.Gigs.Contracts;
 
-namespace SevenBySeven.Modules.Gigs.Features;
+namespace SevenBySeven.Web.Gigs;
 
 /// <summary>
 /// The shape a Gig's details take on a page. Shared by recording a Gig and editing one,
-/// so the two cannot drift apart.
+/// so the two cannot drift apart. The venue and notes are checked by
+/// <see cref="GigDetailsValidator"/>, the same rules the API enforces. The date is checked
+/// here, because the details cannot be made without one.
 /// </summary>
 public sealed class GigForm
 {
     [Required(ErrorMessage = "A gig needs the date it was played.")]
     public DateOnly? PlayedOn { get; set; }
 
-    [StringLength(200, ErrorMessage = "A venue can be at most 200 characters.")]
     public string? Venue { get; set; }
 
-    [StringLength(4000, ErrorMessage = "Notes can be at most 4,000 characters.")]
     public string? Notes { get; set; }
 
     /// <summary>A new Gig, dated today because that is when most are entered.</summary>
@@ -35,4 +35,10 @@ public sealed class GigForm
         Venue = Venue,
         Notes = Notes,
     };
+
+    /// <summary>
+    /// The details as they stand, for checking against the API's rules while the form is
+    /// being filled in, before it has a date.
+    /// </summary>
+    public GigDetails Draft() => new() { PlayedOn = PlayedOn ?? default, Venue = Venue, Notes = Notes };
 }

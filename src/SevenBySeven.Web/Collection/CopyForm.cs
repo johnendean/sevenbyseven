@@ -1,14 +1,16 @@
 using System.ComponentModel.DataAnnotations;
 using SevenBySeven.Modules.Collection.Contracts;
-using SevenBySeven.Modules.Collection.Domain;
 
-namespace SevenBySeven.Modules.Collection.Features;
+namespace SevenBySeven.Web.Collection;
 
 /// <summary>
 /// The shape a Copy's details take on a page. Bound fields need setters, which
-/// <see cref="CopyDetails"/> does not have. Its limits match <see cref="CopyDetailsValidator"/>,
-/// which the API enforces; checking here as well is what lets the page say so beside the field.
-/// Shared by adding a Copy and editing one, so the two cannot drift apart.
+/// <see cref="CopyDetails"/> does not have. What the details may hold is checked by
+/// <see cref="CopyDetailsValidator"/>, the same rules the API enforces, so the page can say
+/// what is wrong beside the field. Only the currency is checked here, because the API drops
+/// one it cannot read rather than refusing it. Shared by adding a Copy and editing one, so
+/// the two cannot drift apart. Its fields are named as the details' are, which is how a
+/// failed rule finds its field.
 /// </summary>
 public sealed class CopyForm
 {
@@ -16,19 +18,15 @@ public sealed class CopyForm
 
     public ConditionGrade? SleeveCondition { get; set; }
 
-    [Range(0, 1_000_000, ErrorMessage = "A price cannot be negative.")]
     public decimal? PricePaid { get; set; }
 
     [StringLength(3, MinimumLength = 3, ErrorMessage = "A currency is three letters, such as GBP.")]
     public string? Currency { get; set; } = "GBP";
 
-    [StringLength(200)]
     public string? PurchasedFrom { get; set; }
 
-    [StringLength(200)]
     public string? Location { get; set; }
 
-    [StringLength(4000)]
     public string? Notes { get; set; }
 
     /// <summary>
@@ -36,21 +34,23 @@ public sealed class CopyForm
     /// Stack arrives here with its condition and price blank — that is the whole reason
     /// this path exists.
     /// </summary>
-    public static CopyForm For(Copy copy)
+    public static CopyForm For(CopySheet copy)
     {
         ArgumentNullException.ThrowIfNull(copy);
 
+        var details = copy.Details;
+
         return new CopyForm
         {
-            MediaCondition = copy.MediaCondition,
-            SleeveCondition = copy.SleeveCondition,
-            PricePaid = copy.PricePaid,
+            MediaCondition = details.MediaCondition,
+            SleeveCondition = details.SleeveCondition,
+            PricePaid = details.PricePaid,
             // A Copy with no price kept no currency either, so offer the usual one back
             // rather than an empty box that looks like a missing answer.
-            Currency = copy.PricePaidCurrency ?? "GBP",
-            PurchasedFrom = copy.PurchasedFrom,
-            Location = copy.Location,
-            Notes = copy.Notes,
+            Currency = details.PricePaidCurrency ?? "GBP",
+            PurchasedFrom = details.PurchasedFrom,
+            Location = details.Location,
+            Notes = details.Notes,
         };
     }
 

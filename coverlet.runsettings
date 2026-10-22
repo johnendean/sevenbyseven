@@ -28,8 +28,11 @@
                generated render tree, so their percentage measures how much HTML a test
                rendered rather than whether anything behaves correctly — see
                docs/adr/0004. Logic worth testing is lifted out into the module instead,
-               as Scan.FromJpeg already is. -->
-          <ExcludeByFile>**/Migrations/*.cs,**/*.razor</ExcludeByFile>
+               as Scan.FromJpeg already is.
+
+               Nothing under obj/ is written by us: it is what source generators emit,
+               and the OpenAPI one alone writes several hundred lines into the API. -->
+          <ExcludeByFile>**/Migrations/*.cs,**/*.razor,**/obj/**</ExcludeByFile>
         </Configuration>
       </DataCollector>
     </DataCollectors>

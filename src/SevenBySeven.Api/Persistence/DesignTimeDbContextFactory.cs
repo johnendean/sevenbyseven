@@ -1,8 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
+using SevenBySeven.Shared.Modularity;
 using SevenBySeven.Shared.Persistence;
 
-namespace SevenBySeven.Web.Persistence;
+namespace SevenBySeven.Api.Persistence;
 
 /// <summary>
 /// Used only by the EF Core tooling when adding or scripting migrations. The
@@ -18,6 +19,6 @@ internal sealed class DesignTimeDbContextFactory : IDesignTimeDbContextFactory<S
             .UseSnakeCaseNamingConvention()
             .Options;
 
-        return new SevenBySevenDbContext(options, ModuleCatalog.All);
+        return new SevenBySevenDbContext(options, ModuleDiscovery.FindIn(typeof(DesignTimeDbContextFactory).Assembly));
     }
 }

@@ -1,5 +1,7 @@
+extern alias web;
+
 using System.Globalization;
-using SevenBySeven.Modules.Gigs.Features;
+using web::SevenBySeven.Web.Gigs;
 
 namespace SevenBySeven.Tests.Gigs;
 

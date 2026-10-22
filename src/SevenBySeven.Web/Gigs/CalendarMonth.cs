@@ -1,6 +1,6 @@
 using System.Globalization;
 
-namespace SevenBySeven.Modules.Gigs.Features;
+namespace SevenBySeven.Web.Gigs;
 
 /// <summary>
 /// One month laid out as a calendar page: weeks starting on Monday, with the days that

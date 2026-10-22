@@ -26,6 +26,8 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\SevenBySeven.Api\SevenBySeven.Api.csproj" />
     <ProjectReference Include="..\..\src\SevenBySeven.Shared\SevenBySeven.Shared.csproj" />
+    <!-- Aliased because the web app's Program would otherwise collide with the API's. -->
+    <ProjectReference Include="..\..\src\SevenBySeven.Web\SevenBySeven.Web.csproj" Aliases="web" />
     <ProjectReference Include="..\..\src\Modules\SevenBySeven.Modules.Identification\SevenBySeven.Modules.Identification.csproj" />
     <ProjectReference Include="..\..\src\Modules\SevenBySeven.Modules.Scanning\SevenBySeven.Modules.Scanning.csproj" />
     <ProjectReference Include="..\..\src\Modules\SevenBySeven.Modules.Catalogue\SevenBySeven.Modules.Catalogue.csproj" />

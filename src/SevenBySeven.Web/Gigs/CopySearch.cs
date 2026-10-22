@@ -1,6 +1,6 @@
 using SevenBySeven.Modules.Catalogue.Contracts;
 
-namespace SevenBySeven.Modules.Gigs.Features;
+namespace SevenBySeven.Web.Gigs;
 
 /// <summary>
 /// Finding a record in the Collection by what is written on it. Every word typed has to

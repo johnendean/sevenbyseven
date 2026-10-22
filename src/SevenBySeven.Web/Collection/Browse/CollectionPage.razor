@@ -1,6 +1,5 @@
 @page "/collection"
-@inject IVinylCollection Collection
-@inject IPlayHistory Plays
+@inject CollectionClient Collection
 
 <PageTitle>My collection</PageTitle>
 
@@ -36,11 +35,11 @@ else
     <ul class="copy-list">
         @foreach (var copy in Shown())
         {
-            var standing = _standings[copy.Id];
+            var standing = copy.Standing;
 
             <li class="copy">
                 <a class="copy-link" href="collection/@copy.Id">
-                    @if (copy.Release?.ThumbnailUrl is { Length: > 0 } thumbnail)
+                    @if (copy.Release.ThumbnailUrl is { Length: > 0 } thumbnail)
                     {
                         <img src="@thumbnail" alt="" loading="lazy" />
                     }
@@ -50,8 +49,8 @@ else
                     }
 
                     <span class="copy-detail">
-                        <strong>@copy.Release?.ArtistName &mdash; @copy.Release?.Title</strong>
-                        <span>@copy.Release?.Pressing</span>
+                        <strong>@copy.Release.ArtistName &mdash; @copy.Release.Title</strong>
+                        <span>@copy.Release.Pressing</span>
                         @if (standing.TimesPlayed > 0)
                         {
                             <span>@standing.Describe()</span>
@@ -81,20 +80,14 @@ else
     [SupplyParameterFromQuery(Name = "hide")]
     public string? Hide { get; set; }
 
-    private IReadOnlyList<Copy>? _copies;
-    private IReadOnlyDictionary<Guid, PlayStanding> _standings = new Dictionary<Guid, PlayStanding>();
+    private IReadOnlyList<CopyLine>? _copies;
 
     private bool HidingRepeats => string.Equals(Hide, "repeats", StringComparison.OrdinalIgnoreCase);
 
-    protected override async Task OnInitializedAsync()
-    {
-        var copies = await Collection.ListAsync();
-        _standings = await Plays.StandingsAsync([.. copies.Select(copy => copy.Id)]);
-        _copies = copies;
-    }
+    protected override async Task OnInitializedAsync() => _copies = await Collection.ListAsync();
 
-    private IEnumerable<Copy> Shown() =>
-        HidingRepeats ? _copies!.Where(copy => _standings[copy.Id].Repeat is Repeat.None) : _copies!;
+    private IEnumerable<CopyLine> Shown() =>
+        HidingRepeats ? _copies!.Where(copy => copy.Standing.Repeat is Repeat.None) : _copies!;
 
     private string Hidden()
     {
