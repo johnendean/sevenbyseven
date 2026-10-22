@@ -5,10 +5,7 @@ using SevenBySeven.Modules.Gigs.Contracts;
 using SevenBySeven.Shared.Persistence;
 using SevenBySeven.Web;
 using SevenBySeven.Web.Api;
-using SevenBySeven.Web.Catalogue;
-using SevenBySeven.Web.Collection;
 using SevenBySeven.Web.Components;
-using SevenBySeven.Web.Gigs;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -27,9 +24,7 @@ builder.AddNpgsqlDbContext<SevenBySevenDbContext>(
     configureDbContextOptions: options => options.UseSnakeCaseNamingConvention());
 
 // Every other page reaches the modules through the API (docs/adr/0009).
-builder.Services.AddHttpClient<CatalogueClient>(http => http.BaseAddress = ApiCalls.BaseAddress);
-builder.Services.AddHttpClient<CollectionClient>(http => http.BaseAddress = ApiCalls.BaseAddress);
-builder.Services.AddHttpClient<GigsClient>(http => http.BaseAddress = ApiCalls.BaseAddress);
+builder.Services.AddApiClients();
 
 // The forms check what they would send against the rules the API enforces.
 builder.Services.AddSingleton<IValidator<CopyDetails>, CopyDetailsValidator>();
