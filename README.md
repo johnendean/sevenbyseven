@@ -44,7 +44,8 @@ ant auth status   # shows which credential is in use
 ```
 
 A key still works and takes priority over the sign-in, whether it is set in
-`ANTHROPIC_API_KEY` or in user secrets as `Identification:AnthropicApiKey`. To use the sign-in,
+`ANTHROPIC_API_KEY` or in user secrets on the API project as
+`Identification:AnthropicApiKey`. To use the sign-in,
 remove the user secret and leave `ANTHROPIC_API_KEY` unset or empty.
 
 Without credentials the app still runs: identification degrades rather than failing. With
@@ -71,8 +72,12 @@ Without a key, Debug builds warn and Release builds fail outright.
 dotnet run --project src/SevenBySeven.AppHost
 ```
 
-Aspire starts Postgres, applies migrations on boot, and serves the app at
-<https://localhost:7066>. The dashboard URL is printed on startup.
+Aspire starts Postgres, then the API, which applies migrations on boot, then the web app
+at <https://localhost:7066>. The dashboard URL is printed on startup.
+
+Settings can be given as environment variables on that command, as the examples below
+do. Aspire passes its own environment on to both the API and the web app, so a setting
+reaches whichever of them reads it.
 
 ## Using the camera
 
@@ -116,7 +121,8 @@ Scanning__MaxStackSize=20 dotnet run --project src/SevenBySeven.AppHost
 
 The value is clamped — photographs are held in the API's memory until they are confirmed
 or abandoned, so an unchecked one is measured in tens of megabytes. The detector's
-own thresholds sit under `Scanning__Detection__*` and are worth touching only if the
+own thresholds sit under `Scanning__Detection__*`. The web app reads those, not the API,
+since detection runs in the browser. They are worth touching only if the
 highlight misbehaves in your room; what they mean, and why detection is a browser
 heuristic rather than a call to a model, is in
 [ADR 0005](./docs/adr/0005-record-detection-is-a-browser-heuristic.md).
@@ -170,23 +176,30 @@ explains why.
 ## Layout
 
 ```
-src/SevenBySeven.AppHost          Aspire orchestration: Postgres, pgweb, the web app
+src/SevenBySeven.AppHost          Aspire orchestration: Postgres, pgweb, the API, the web app
 src/SevenBySeven.ServiceDefaults  telemetry, health checks, HTTP resilience
-src/SevenBySeven.Web              Blazor Server host; composes the modules
+src/SevenBySeven.Api              HTTP API host; composes the modules, owns the database
+src/SevenBySeven.Web              Blazor Server app; every page, over typed HTTP clients
 src/SevenBySeven.Shared           IModule, the DbContext, schema names
-src/Modules/…Scanning             camera capture and photo intake, one record or a Stack
+src/Modules/…Scanning             photo intake, and the Stack in progress
 src/Modules/…Identification       barcode decode, sleeve reading, Discogs search
 src/Modules/…Catalogue            Release and Track — cached Discogs data
-src/Modules/…Collection           Copy — the records I own, and the pages for browsing them
+src/Modules/…Collection           Copy — the records I own
 src/Modules/…Gigs                 Gig, Selection and Play — what I played, and Repeats
+src/Modules/…*.Contracts          each module's requests and responses, shared with Web
 tests/SevenBySeven.Tests          unit tests, and database tests against Postgres
 scripts                           the coverage gate CI and you both run
 ```
 
 Modules are separate projects so the boundaries are enforced by the compiler rather than
-by convention. Each contributes services and entity configuration through `IModule`, and
-carries its own pages. The host references every project under `src/Modules` and finds
-their `IModule`s at startup, so adding a module needs no change to the host.
+by convention. Each contributes services, entity configuration and endpoints through
+`IModule`. The API references every project under `src/Modules` and finds their
+`IModule`s at startup, so adding a module needs no change to the API.
+
+Web references only the `Contracts` projects, so a page cannot reach past the API to a
+module's services. It has no database connection and no credentials. Why the two run as
+separate processes is in
+[ADR 0009](./docs/adr/0009-modules-are-a-headless-api-in-their-own-process.md).
 
 ## Tests
 
@@ -212,10 +225,13 @@ with `COVERAGE_THRESHOLD=85 ./scripts/check-coverage.sh` when you want to see ho
 branch is from one.
 
 `coverlet.runsettings` decides what the figure is measured over. Out of it are the Aspire
-AppHost, the web host and ServiceDefaults, which are orchestration and composition no unit
+AppHost, the web app and ServiceDefaults, which are orchestration and composition no unit
 test reaches; the EF migrations and model snapshot, which are generated and outnumber the
-code by some margin; and the Razor components, whose counted lines are the generated
-render tree rather than behaviour — see [ADR 0004](./docs/adr/0004-coverage-is-measured-without-razor-components.md).
+code by some margin; whatever source generators write under `obj/`, which is not ours
+either; and the Razor components, whose counted lines are the generated render tree rather
+than behaviour — see [ADR 0004](./docs/adr/0004-coverage-is-measured-without-razor-components.md).
+The API host is in the figure: it holds the error handling and module composition every
+client depends on, and its tests drive it end to end against Postgres.
 Logic worth testing is lifted out of a page into its module instead, as `Scan.FromJpeg` is.
 
 Coveralls draws the badge above and comments on a pull request with the change the branch

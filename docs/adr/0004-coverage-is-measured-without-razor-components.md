@@ -19,6 +19,7 @@ This is written down because a future reader will otherwise reasonably read the 
 ## Consequences
 
 - Logic worth testing is lifted out of a page into the module that owns it, which is what `Scan.FromJpeg` already does deliberately. A page that grows a decision worth asserting on is a page with a class missing from behind it.
-- `SevenBySeven.Web` and `SevenBySeven.ServiceDefaults` are excluded by name for the same reason the AppHost is. They were already absent from the report because no test project referenced them; naming them means a future `ProjectReference` cannot move the threshold by accident.
+- `SevenBySeven.Web` and `SevenBySeven.ServiceDefaults` are excluded by name for the same reason the AppHost is. They were absent from the report at first because no test project referenced them, and naming them meant a future `ProjectReference` could not move the threshold by accident. That has since happened: the tests reference Web and load ServiceDefaults through the API host. The API host itself is counted, because it has behaviour of its own (docs/adr/0009).
+- Source that generators write under `obj/` is excluded for the same reason as the render tree: it is not code anyone here wrote. The OpenAPI generator alone writes several hundred lines into the API.
 - The `IModule.RegisterServices` implementations stay in the denominator, uncovered. They are ordinary application code, and carrying them as a visible cost of the module design is more honest than defining them away — the threshold is met without them.
 - The gate reads line coverage only. Branch coverage is reported but not enforced, so there is one number to satisfy rather than two.
