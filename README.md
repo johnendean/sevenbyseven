@@ -175,6 +175,47 @@ Removing a record you have played keeps it against the Gigs it was played at, as
 Copy, rather than deleting it; [ADR 0006](./docs/adr/0006-a-played-copy-is-never-deleted.md)
 explains why.
 
+## Architecture
+
+Two processes, both started by the Aspire AppHost alongside Postgres. The API holds the
+modules, the database and the credentials. The web app holds the pages and reaches
+everything through the API. Why they are split is in
+[ADR 0009](./docs/adr/0009-modules-are-a-headless-api-in-their-own-process.md), and why
+the Stack lives in the API is in [ADR 0010](./docs/adr/0010-a-stack-lives-in-the-api.md).
+
+```
+  Browser: pages, the camera, the record detector
+     │
+     │  Blazor Server circuit (SignalR)
+     ▼
+┌─────────────────────────────────────────────────────────────┐
+│ SevenBySeven.Web                                            │
+│   every page, over typed HTTP clients                       │
+│   references *.Contracts only: no database, no credentials  │
+└──────────────────────────────┬──────────────────────────────┘
+                               │  HTTP + JSON, and Server-Sent
+                               │  Events for changes to the Stack
+                               ▼
+┌─────────────────────────────────────────────────────────────┐
+│ SevenBySeven.Api              /openapi/v1.json, /scalar     │
+│                                                             │
+│   Scanning ──────────┬──────────────┐          Gigs         │
+│     │                │              │           │  │        │
+│     │                ▼              ▼           │  │        │
+│     │         Identification    Collection ◄────┘  │        │
+│     │                │              │              │        │
+│     ▼                ▼              ▼              ▼        │
+│   ══════════════════════ Catalogue ═════════════════        │
+│                                                             │
+│   An arrow is a project reference. Scanning holds the       │
+│   Stack, in memory. Every module builds on                  │
+│   SevenBySeven.Shared: IModule and the one DbContext.       │
+└──────────────┬────────────────────────────────┬─────────────┘
+               │  EF Core                       │  HTTPS
+               ▼                                ▼
+           Postgres                    Discogs, Anthropic
+```
+
 ## Layout
 
 ```
