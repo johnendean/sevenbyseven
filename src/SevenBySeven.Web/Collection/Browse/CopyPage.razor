@@ -1,7 +1,6 @@
 @page "/collection/{Id:guid}"
 @rendermode InteractiveServer
-@inject IVinylCollection Collection
-@inject IPlayHistory Plays
+@inject CollectionClient Collection
 @inject NavigationManager Navigation
 @inject ILogger<CopyPage> Logger
 
@@ -17,7 +16,8 @@
 }
 else
 {
-    var release = _copy.Release!;
+    var release = _copy.Release;
+    var details = _copy.Details;
 
     <h1>@release.ArtistName &mdash; @release.Title</h1>
 
@@ -81,6 +81,7 @@ else
             {
                 <EditForm Model="_form" OnValidSubmit="Save" class="copy-form">
                     <DataAnnotationsValidator />
+                    <ContractValidator TContract="CopyDetails" Details="_form.ToDetails" />
 
                     <div class="copy-field">
                         <label class="form-label" for="media">Media condition</label>
@@ -152,39 +153,39 @@ else
             <dl>
                 <dt>Added</dt>
                 <dd>@_copy.AddedOn.ToLocalTime().ToString("d MMMM yyyy")</dd>
-                @if (_copy.MediaCondition is { } media)
+                @if (details.MediaCondition is { } media)
                 {
                     <dt>Media</dt>
                     <dd>@media.Label()</dd>
                 }
-                @if (_copy.SleeveCondition is { } sleeve)
+                @if (details.SleeveCondition is { } sleeve)
                 {
                     <dt>Sleeve</dt>
                     <dd>@sleeve.Label()</dd>
                 }
-                @if (_copy.PricePaid is { } price)
+                @if (details.PricePaid is { } price)
                 {
                     <dt>Paid</dt>
-                    <dd>@price.ToString("0.00") @_copy.PricePaidCurrency</dd>
+                    <dd>@price.ToString("0.00") @details.PricePaidCurrency</dd>
                 }
-                @if (_copy.PurchasedFrom is { Length: > 0 })
+                @if (details.PurchasedFrom is { Length: > 0 })
                 {
                     <dt>From</dt>
-                    <dd>@_copy.PurchasedFrom</dd>
+                    <dd>@details.PurchasedFrom</dd>
                 }
-                @if (_copy.Location is { Length: > 0 })
+                @if (details.Location is { Length: > 0 })
                 {
                     <dt>Kept</dt>
-                    <dd>@_copy.Location</dd>
+                    <dd>@details.Location</dd>
                 }
-                @if (_copy.Notes is { Length: > 0 })
+                @if (details.Notes is { Length: > 0 })
                 {
                     <dt>Notes</dt>
-                    <dd>@_copy.Notes</dd>
+                    <dd>@details.Notes</dd>
                 }
             </dl>
 
-            @if (!HasOwnDetails(_copy))
+            @if (!HasOwnDetails(details))
             {
                 <p class="copy-meta">
                     Nothing recorded beyond the pressing itself. Condition and what you
@@ -198,15 +199,15 @@ else
 
             <h2>Played out</h2>
             <p>
-                @_standing.Describe()
-                @if (_standing.LastPlayed is { } last)
+                @_copy.Standing.Describe()
+                @if (_copy.Standing.LastPlayed is { } last)
                 {
                     <a href="gigs/@last.GigId">See that gig</a>
                 }
             </p>
-            @if (_standing.Repeat is not Repeat.None)
+            @if (_copy.Standing.Repeat is not Repeat.None)
             {
-                <p class="copy-meta">@_standing.Repeat.Describe(), so it would be a repeat at the next one.</p>
+                <p class="copy-meta">@_copy.Standing.Repeat.Describe(), so it would be a repeat at the next one.</p>
             }
         </div>
     </div>
@@ -264,7 +265,7 @@ else
         <p class="copy-meta">
             This removes your copy. The pressing stays in the catalogue, so adding it again
             costs nothing.
-            @if (_standing.TimesPlayed > 0)
+            @if (_copy.Standing.TimesPlayed > 0)
             {
                 <text>Gigs it was played at will still show it, as a record you no longer own.</text>
             }
@@ -276,8 +277,7 @@ else
     [Parameter]
     public Guid Id { get; set; }
 
-    private Copy? _copy;
-    private PlayStanding _standing = PlayStanding.NeverPlayed;
+    private CopySheet? _copy;
     private CopyForm _form = new();
     private bool _editing;
     private bool _saving;
@@ -291,9 +291,8 @@ else
     protected override async Task OnParametersSetAsync()
     {
         _copy = await Collection.FindAsync(Id);
-        _standing = (await Plays.StandingsAsync([Id]))[Id];
         _loaded = true;
-        _showsBpm = _copy?.Release?.Tracks.Any(track => track.Bpm is not null) ?? false;
+        _showsBpm = _copy?.Release.Tracks.Any(track => track.Bpm is not null) ?? false;
     }
 
     /// <summary>
@@ -332,7 +331,7 @@ else
         catch (Exception ex)
         {
             Logger.LogError(ex, "Updating copy {CopyId} failed.", Id);
-            _saveError = "Those details could not be saved. The database may be unreachable.";
+            _saveError = "Those details could not be saved. The API may be unreachable.";
         }
         finally
         {
@@ -341,13 +340,13 @@ else
     }
 
     /// <summary>Whether anything is known about this Copy beyond the pressing it is of.</summary>
-    private static bool HasOwnDetails(Copy copy) =>
-        copy.MediaCondition is not null
-        || copy.SleeveCondition is not null
-        || copy.PricePaid is not null
-        || !string.IsNullOrWhiteSpace(copy.PurchasedFrom)
-        || !string.IsNullOrWhiteSpace(copy.Location)
-        || !string.IsNullOrWhiteSpace(copy.Notes);
+    private static bool HasOwnDetails(CopyDetails details) =>
+        details.MediaCondition is not null
+        || details.SleeveCondition is not null
+        || details.PricePaid is not null
+        || !string.IsNullOrWhiteSpace(details.PurchasedFrom)
+        || !string.IsNullOrWhiteSpace(details.Location)
+        || !string.IsNullOrWhiteSpace(details.Notes);
 
     private async Task Remove()
     {

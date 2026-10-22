@@ -1,7 +1,7 @@
 @page "/collection/add/{DiscogsReleaseId:int}"
 @rendermode InteractiveServer
-@inject IReleaseCatalogue Catalogue
-@inject IVinylCollection Collection
+@inject CatalogueClient Catalogue
+@inject CollectionClient Collection
 @inject NavigationManager Navigation
 @inject ILogger<AddCopyPage> Logger
 
@@ -55,6 +55,7 @@ else
 
     <EditForm Model="_form" OnValidSubmit="Add" class="add-form">
         <DataAnnotationsValidator />
+        <ContractValidator TContract="CopyDetails" Details="_form.ToDetails" />
 
         <div class="add-field">
             <label class="form-label" for="media">Media condition</label>
@@ -127,7 +128,7 @@ else
 
     private readonly CopyForm _form = new();
 
-    private Release? _release;
+    private ReleaseSheet? _release;
     private bool _fetching = true;
     private bool _adding;
     private string? _error;
@@ -168,13 +169,22 @@ else
 
         try
         {
-            var copy = await Collection.AddAsync(_release.Id, _form.ToDetails());
+            var copy = await Collection.AddAsync(new AddCopyRequest(DiscogsReleaseId, _form.ToDetails()));
+
+            if (copy is null)
+            {
+                // Fetched a moment ago, but Discogs could not supply it this time.
+                _release = null;
+                _adding = false;
+                return;
+            }
+
             Navigation.NavigateTo($"collection/{copy.Id}");
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Adding a copy of release {ReleaseId} failed.", _release.Id);
-            _error = "That could not be added. The database may be unreachable.";
+            Logger.LogError(ex, "Adding a copy of release {DiscogsReleaseId} failed.", DiscogsReleaseId);
+            _error = "That could not be added. The API may be unreachable.";
             _adding = false;
         }
     }

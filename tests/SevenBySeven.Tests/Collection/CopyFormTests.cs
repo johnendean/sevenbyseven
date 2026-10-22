@@ -1,6 +1,8 @@
+extern alias web;
+
+using SevenBySeven.Modules.Catalogue;
 using SevenBySeven.Modules.Collection.Contracts;
-using SevenBySeven.Modules.Collection.Domain;
-using SevenBySeven.Modules.Collection.Features;
+using web::SevenBySeven.Web.Collection;
 
 namespace SevenBySeven.Tests.Collection;
 
@@ -40,14 +42,13 @@ public class CopyFormTests
     [Fact]
     public void Editing_a_copy_starts_from_what_is_already_known()
     {
-        var copy = new Copy
+        var copy = Sheet(new CopyDetails
         {
-            ReleaseId = Guid.CreateVersion7(),
             MediaCondition = ConditionGrade.Good,
             PricePaid = 5m,
             PricePaidCurrency = "EUR",
             Location = "Loft",
-        };
+        });
 
         var form = CopyForm.For(copy);
 
@@ -62,7 +63,7 @@ public class CopyFormTests
     {
         // This is the case the edit path exists for: a Stack adds without stopping to
         // ask, so condition and price arrive here blank or not at all.
-        var copy = new Copy { ReleaseId = Guid.CreateVersion7(), PurchasedFrom = "Reckless" };
+        var copy = Sheet(new CopyDetails { PurchasedFrom = "Reckless" });
 
         var form = CopyForm.For(copy);
 
@@ -76,4 +77,7 @@ public class CopyFormTests
     [Fact]
     public void There_is_no_copy_to_edit() =>
         Assert.Throws<ArgumentNullException>(() => CopyForm.For(null!));
+
+    private static CopySheet Sheet(CopyDetails details) =>
+        new(Guid.CreateVersion7(), DateTimeOffset.UtcNow, TestDatabase.AnyRelease().ToSheet(), details, PlayStanding.NeverPlayed);
 }

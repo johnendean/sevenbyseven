@@ -1,8 +1,10 @@
+extern alias web;
+
 using SevenBySeven.Modules.Catalogue;
 using SevenBySeven.Modules.Collection.Contracts;
 using SevenBySeven.Modules.Gigs;
 using SevenBySeven.Modules.Gigs.Contracts;
-using SevenBySeven.Modules.Gigs.Features;
+using web::SevenBySeven.Web.Gigs;
 
 namespace SevenBySeven.Tests.Gigs;
 

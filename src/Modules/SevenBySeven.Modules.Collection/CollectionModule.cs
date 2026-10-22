@@ -9,7 +9,7 @@ using SevenBySeven.Shared.Modularity;
 namespace SevenBySeven.Modules.Collection;
 
 /// <summary>
-/// Owns the Copies I own, and the pages for browsing them.
+/// Owns the Copies I own.
 /// Reads the Catalogue; never writes to it.
 /// </summary>
 public sealed class CollectionModule : IModule

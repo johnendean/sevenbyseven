@@ -1,6 +1,6 @@
 @page "/gigs/{Id:guid}"
 @rendermode InteractiveServer
-@inject IGigLog Gigs
+@inject GigsClient Gigs
 @inject NavigationManager Navigation
 @inject ILogger<GigPage> Logger
 
@@ -20,6 +20,7 @@ else
     {
         <EditForm Model="_form" OnValidSubmit="SaveDetails" class="gig-details">
             <DataAnnotationsValidator />
+            <ContractValidator TContract="GigDetails" Details="_form.Draft" />
             <GigDetailsFields Form="_form" />
             <button type="submit" class="btn btn-primary" disabled="@_busy">Save</button>
             <button type="button" class="btn btn-secondary" @onclick="() => _editing = false">Cancel</button>
@@ -259,7 +260,7 @@ else
         catch (Exception ex)
         {
             Logger.LogError(ex, "Changing gig {GigId} failed.", Id);
-            _error = "That could not be saved. The database may be unreachable.";
+            _error = "That could not be saved. The API may be unreachable.";
         }
         finally
         {
@@ -290,7 +291,7 @@ else
         catch (Exception ex)
         {
             Logger.LogError(ex, "Deleting gig {GigId} failed.", Id);
-            _error = "The gig could not be deleted. The database may be unreachable.";
+            _error = "The gig could not be deleted. The API may be unreachable.";
         }
         finally
         {

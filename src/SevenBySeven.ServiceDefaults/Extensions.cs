@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Http.Resilience;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.ServiceDiscovery;
 using OpenTelemetry;
@@ -28,8 +29,10 @@ public static class Extensions
 
         builder.Services.ConfigureHttpClientDefaults(http =>
         {
-            // Turn on resilience by default
-            http.AddStandardResilienceHandler();
+            // Turn on resilience by default, but never replay a write. A POST that committed
+            // and then lost its response would be sent again, and nothing on the far side
+            // deduplicates: a second Copy, Gig or Play would be the result. Reads still retry.
+            http.AddStandardResilienceHandler(options => options.Retry.DisableForUnsafeHttpMethods());
 
             // Turn on service discovery by default
             http.AddServiceDiscovery();

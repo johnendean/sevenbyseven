@@ -1,0 +1,50 @@
+@* Checks an EditForm against the same FluentValidation rules the API enforces, so a page
+   says what is wrong beside the field instead of the API refusing it after the fact. The
+   form's model stands in for the contract it produces: Details builds the contract from
+   the form as it stands, and a failed rule is shown against the form field of the same
+   name. Rules the contract cannot express stay on the form, beside a
+   DataAnnotationsValidator. *@
+@typeparam TContract
+@implements IDisposable
+@inject IValidator<TContract> Validator
+
+@code {
+    [CascadingParameter]
+    private EditContext EditContext { get; set; } = default!;
+
+    /// <summary>The contract the form would send if it were submitted now.</summary>
+    [Parameter, EditorRequired]
+    public Func<TContract> Details { get; set; } = default!;
+
+    private ValidationMessageStore? _messages;
+
+    protected override void OnInitialized()
+    {
+        if (EditContext is null)
+        {
+            throw new InvalidOperationException($"{nameof(ContractValidator<TContract>)} must sit inside an EditForm.");
+        }
+
+        _messages = new ValidationMessageStore(EditContext);
+        EditContext.OnValidationRequested += Validate;
+        EditContext.OnFieldChanged += Validate;
+    }
+
+    private void Validate(object? sender, EventArgs args)
+    {
+        _messages!.Clear();
+
+        foreach (var error in Validator.Validate(Details()).Errors)
+        {
+            _messages.Add(new FieldIdentifier(EditContext.Model, error.PropertyName), error.ErrorMessage);
+        }
+
+        EditContext.NotifyValidationStateChanged();
+    }
+
+    public void Dispose()
+    {
+        EditContext.OnValidationRequested -= Validate;
+        EditContext.OnFieldChanged -= Validate;
+    }
+}
