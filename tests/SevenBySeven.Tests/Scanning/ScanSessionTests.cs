@@ -1,5 +1,7 @@
-using SevenBySeven.Modules.Scanning;
-using SevenBySeven.Modules.Scanning.Domain;
+extern alias web;
+
+using SevenBySeven.Modules.Scanning.Contracts;
+using web::SevenBySeven.Web.Scanning;
 
 namespace SevenBySeven.Tests.Scanning;
 

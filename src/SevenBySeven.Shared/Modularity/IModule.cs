@@ -7,7 +7,7 @@ namespace SevenBySeven.Shared.Modularity;
 
 /// <summary>
 /// A vertical slice of the application. Each module owns its own domain types,
-/// persistence configuration, endpoints and UI, and is composed into the host at startup.
+/// persistence configuration and endpoints, and is composed into the API at startup.
 /// The host discovers implementations itself, so each must be public with a
 /// parameterless constructor.
 /// </summary>

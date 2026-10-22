@@ -1,4 +1,5 @@
 using SevenBySeven.Modules.Identification.Contracts;
+using SevenBySeven.Modules.Scanning.Contracts;
 
 namespace SevenBySeven.Modules.Scanning.Domain;
 
@@ -20,6 +21,8 @@ public sealed class StackedScan
 
     public Scan Scan { get; }
 
+    public Guid Id => Scan.Id;
+
     /// <summary>Where it came in the Stack, counting from one. Shown, so it can be talked about.</summary>
     public int Position { get; }
 
@@ -39,6 +42,30 @@ public sealed class StackedScan
 
     /// <summary>True once identification has finished, however it finished.</summary>
     public bool IsIdentified => Status is not StackedScanStatus.Identifying;
+
+    /// <summary>
+    /// A Confirmation is under way: the pressing is being fetched and the Copy added. A
+    /// second one, from another device, must not add the same record twice.
+    /// </summary>
+    public bool IsConfirming { get; private set; }
+
+    /// <summary>
+    /// Claims this Scan for a Confirmation of one of its own Match Candidates. False when it
+    /// is already over, already being confirmed, or the release is not one it was offered.
+    /// </summary>
+    public bool TryBeginConfirmation(int discogsReleaseId)
+    {
+        if (IsResolved || IsConfirming || Result?.Candidates.Any(candidate => candidate.DiscogsReleaseId == discogsReleaseId) is not true)
+        {
+            return false;
+        }
+
+        IsConfirming = true;
+        return true;
+    }
+
+    /// <summary>The Confirmation could not be made. The Scan is untouched, so it can be tried again.</summary>
+    public void ConfirmationFailed() => IsConfirming = false;
 
     /// <summary>Identification finished. Whether it found anything decides where this lands.</summary>
     public void Identified(IdentificationResult result)
@@ -71,7 +98,11 @@ public sealed class StackedScan
     }
 
     /// <summary>Confirmation: a Copy now exists, so this Scan is finished.</summary>
-    public void Confirm() => Status = StackedScanStatus.Confirmed;
+    public void Confirm()
+    {
+        IsConfirming = false;
+        Status = StackedScanStatus.Confirmed;
+    }
 
     /// <summary>Given up on, whether it matched or not.</summary>
     public void Abandon() => Status = StackedScanStatus.Abandoned;

@@ -1,4 +1,4 @@
-namespace SevenBySeven.Modules.Scanning.Domain;
+namespace SevenBySeven.Modules.Scanning.Contracts;
 
 /// <summary>
 /// The facts that are usually true of a whole Stack at once. A pile of records brought

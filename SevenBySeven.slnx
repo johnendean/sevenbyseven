@@ -16,6 +16,7 @@
     <Project Path="src/Modules/SevenBySeven.Modules.Identification/SevenBySeven.Modules.Identification.csproj" />
     <Project Path="src/Modules/SevenBySeven.Modules.Identification.Contracts/SevenBySeven.Modules.Identification.Contracts.csproj" />
     <Project Path="src/Modules/SevenBySeven.Modules.Scanning/SevenBySeven.Modules.Scanning.csproj" />
+    <Project Path="src/Modules/SevenBySeven.Modules.Scanning.Contracts/SevenBySeven.Modules.Scanning.Contracts.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/SevenBySeven.Tests/SevenBySeven.Tests.csproj" />

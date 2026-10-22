@@ -1,4 +1,4 @@
-namespace SevenBySeven.Modules.Scanning.Domain;
+namespace SevenBySeven.Modules.Scanning.Contracts;
 
 /// <summary>Where a Scan in a Stack has got to.</summary>
 public enum StackedScanStatus

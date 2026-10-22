@@ -2,11 +2,9 @@
 @rendermode InteractiveServer
 @implements IAsyncDisposable
 @inject IJSRuntime JS
-@inject StackSession Session
-@inject ISleeveIdentifier Identifier
-@inject IVinylCollection Collection
-@inject IReleaseCatalogue Catalogue
-@inject IOptions<ScanningOptions> Options
+@inject StackWatch Watch
+@inject StackClient Stacks
+@inject IOptions<DetectionOptions> Detection
 @inject ILogger<StackPage> Logger
 
 <PageTitle>Scan a stack</PageTitle>
@@ -18,18 +16,24 @@
     <div class="alert alert-danger" role="alert">@_error</div>
 }
 
-@if (Session.Current is not { } stack)
+@* An empty Stack that is not capturing here has nothing to show, so it is offered as a
+   new start: beginning again replaces it. *@
+@if (Watch.Current is not { } stack || (stack.IsEmpty && !_capturing))
 {
     @if (_probe is null)
     {
         <p class="stack-meta">Checking what this browser can do&hellip;</p>
+    }
+    else if (!Watch.IsLoaded)
+    {
+        <p class="stack-meta">Looking for a stack in progress&hellip;</p>
     }
     else if (_probe is { HasMediaDevices: true, IsSecureContext: true })
     {
         <p>
             Hold a record up to the camera. It is captured on its own once it is steady, and
             then the camera waits for the next one &mdash; take one away before presenting
-            another. Up to @Options.Value.MaxStackSize records. Each one is identified in
+            another. Up to @(_limits?.MaxStackSize.ToString() ?? "a handful of") records. Each one is identified in
             the background while you carry on, and you pick the matches once the pile is done.
         </p>
 
@@ -75,7 +79,7 @@
         </div>
     }
 }
-else if (!_reviewing)
+else if (_capturing)
 {
     <div class="stack-stage">
         <video @ref="_video" playsinline muted autoplay></video>
@@ -97,7 +101,7 @@ else if (!_reviewing)
     <div class="stack-shots">
         @foreach (var captured in stack.Scans)
         {
-            <img src="@captured.Scan.ToDataUrl()" alt="Record @captured.Position" />
+            <img src="@Photograph(captured)" alt="Record @captured.Position" />
         }
     </div>
 
@@ -109,8 +113,8 @@ else if (!_reviewing)
     </div>
 
     <p class="stack-meta">
-        The photographs are held in memory only. They go when this stack ends, or when you
-        close the tab.
+        The photographs are held in memory only, until this stack ends. The stack can be
+        picked up from another device, and one left untouched for a few hours is given up on.
     </p>
 }
 else
@@ -135,12 +139,12 @@ else
             <div>
                 <label class="form-label" for="from">Bought from</label>
                 <input id="from" class="form-control" maxlength="200"
-                       value="@_defaults.PurchasedFrom" @onchange="SetPurchasedFrom" />
+                       value="@stack.Defaults.PurchasedFrom" @onchange="SetPurchasedFrom" />
             </div>
             <div>
                 <label class="form-label" for="where">Kept</label>
                 <input id="where" class="form-control" maxlength="200"
-                       value="@_defaults.Location" @onchange="SetLocation" />
+                       value="@stack.Defaults.Location" @onchange="SetLocation" />
             </div>
         </div>
     </div>
@@ -148,8 +152,8 @@ else
     <ul class="stack-list">
         @foreach (var captured in stack.Scans)
         {
-            <li class="stack-item @(captured.IsResolved ? "resolved" : null)">
-                <img src="@captured.Scan.ToDataUrl()" alt="Record @captured.Position" />
+            <li class="stack-item @(captured.IsPending ? null : "resolved")">
+                <img src="@Photograph(captured)" alt="Record @captured.Position" />
 
                 <div class="stack-item-body">
                     <strong>Record @captured.Position</strong>
@@ -256,9 +260,9 @@ else
 }
 
 @code {
-    private const string ModulePath = "./_content/SevenBySeven.Modules.Scanning/js/detector.js";
+    private const string ModulePath = "./js/detector.js";
 
-    private const string PreferencesPath = "./_content/SevenBySeven.Modules.Scanning/js/preferences.js";
+    private const string PreferencesPath = "./js/preferences.js";
 
     /// <summary>Where this browser remembers the last Stack's Format.</summary>
     private const string FormatKey = "sevenbyseven.stack.format";
@@ -271,12 +275,12 @@ else
     private const long MaxImageBytes = 8L * 1024 * 1024;
 
     /// <summary>
-    /// One identification at a time. A record is up to six Discogs calls when its Format
-    /// search widens, and the rate limiter queues sixteen before it decides something is
-    /// looping. Running them
-    /// in order also settles the list top-down, which is how you read it.
+    /// Each Scan's photograph as a data URL, fetched from the API once. The ones captured here
+    /// are known already; the ones captured on another device are fetched as they appear.
     /// </summary>
-    private readonly SemaphoreSlim _queue = new(1, 1);
+    private readonly Dictionary<Guid, string> _photographs = [];
+
+    private readonly HashSet<Guid> _fetching = [];
 
     private DotNetObjectReference<StackPage>? _self;
     private IJSObjectReference? _detector;
@@ -285,22 +289,20 @@ else
     private ElementReference _box;
     private ElementReference _badge;
     private CameraProbe? _probe;
-    private StackDefaults _defaults = StackDefaults.None;
+    private StackLimits? _limits;
     private Format _format = Format.Vinyl;
-    private bool _reviewing;
+
+    /// <summary>The camera is running on this page. Otherwise a Stack with Scans is shown for review.</summary>
+    private bool _capturing;
+
     private int _confirming = -1;
     private string? _error;
 
     protected override void OnInitialized()
     {
-        Session.Changed += OnSessionChanged;
-
-        // Coming back to a Stack left mid-review, having wandered off to the collection.
-        if (Session.Current is { } existing)
-        {
-            _defaults = Session.Defaults;
-            _reviewing = existing.Count > 0;
-        }
+        Watch.Changed += OnStackChanged;
+        Watch.Start();
+        FetchPhotographs();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -320,6 +322,15 @@ else
             Logger.LogError(ex, "Could not load the detector module.");
             _probe = new CameraProbe(false, false);
             _error = "The camera module failed to load.";
+        }
+
+        try
+        {
+            _limits = await Stacks.LimitsAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "The stack's limits could not be read.");
         }
 
         _format = await RememberedFormat();
@@ -382,33 +393,48 @@ else
         }
 
         _error = null;
-        _reviewing = false;
-        _defaults = StackDefaults.None;
-        var stack = Session.Begin(Options.Value.MaxStackSize, _format);
-        await RememberFormat(stack.Format);
-
-        // The video element only exists once this has re-rendered.
-        StateHasChanged();
-        await Task.Yield();
-
-        _self ??= DotNetObjectReference.Create(this);
 
         try
         {
-            await _detector.InvokeVoidAsync("start", _video, _box, _badge, Settings(), _self);
+            if (await Stacks.BeginAsync(_format) is not { } stack)
+            {
+                _error = "A stack is already in progress, with records still to deal with. It is shown below.";
+                await Watch.RefreshAsync();
+                return;
+            }
+
+            _photographs.Clear();
+            await RememberFormat(stack.Format);
+            await Watch.RefreshAsync();
+            _capturing = true;
+
+            // The video element only exists once this has re-rendered.
+            StateHasChanged();
+            await Task.Yield();
+
+            _self ??= DotNetObjectReference.Create(this);
+            await _detector.InvokeVoidAsync("start", _video, _box, _badge, Settings(stack.Capacity), _self);
         }
         catch (JSException ex)
         {
             Logger.LogWarning(ex, "The camera could not be started.");
-            Session.Discard();
+            _capturing = false;
+            await Stacks.DiscardAsync();
+            await Watch.RefreshAsync();
             _error = "The camera could not be started. Check the browser has permission.";
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "The stack could not be started.");
+            _capturing = false;
+            _error = "The stack could not be started. The API may be unreachable.";
         }
     }
 
     /// <summary>The thresholds from configuration, plus what the capture itself needs.</summary>
-    private object Settings()
+    private object Settings(int capacity)
     {
-        var detection = Options.Value.Detection;
+        var detection = Detection.Value;
 
         return new
         {
@@ -423,7 +449,7 @@ else
             calibrateFrames = detection.CalibrateFrames,
             clearFraction = detection.ClearFraction,
             settleOutFrames = detection.SettleOutFrames,
-            maxStack = Options.Value.MaxStackSize,
+            maxStack = capacity,
             maxDimension = MaxDimension,
             jpegQuality = JpegQuality,
         };
@@ -432,12 +458,12 @@ else
     /// <summary>
     /// The detector fired. Pulls the JPEG down the stream the browser opened — a
     /// photograph is far past the circuit's receive limit, so it cannot ride the
-    /// interop call itself — and puts a Scan into the Stack.
+    /// interop call itself — and sends it to the Stack, which identifies it behind us.
     /// </summary>
     [JSInvokable]
     public async Task OnCaptured(CaptureResult result)
     {
-        if (Session.Current is not { } stack || stack.IsFull)
+        if (!_capturing || Watch.Current is not { IsFull: false } stack)
         {
             return;
         }
@@ -456,17 +482,25 @@ else
             using var buffer = new MemoryStream((int)data.Length);
             await stream.CopyToAsync(buffer);
 
+            // Checked here as well as in the API, so a broken frame is never sent at all.
             var scan = Scan.FromJpeg(buffer.ToArray(), result.Width, result.Height, CaptureSource.Camera);
-            var stacked = stack.Add(scan);
 
-            if (stack.IsFull)
+            var line = await Stacks.CaptureAsync(scan.Image, scan.Width, scan.Height);
+
+            // Full, or gone: another device took the last place, or threw the Stack away.
+            if (line is null || line.Position >= stack.Capacity)
             {
                 await _detector!.InvokeVoidAsync("pause");
             }
 
-            QueueIdentification(stacked, stack.Format);
+            if (line is not null)
+            {
+                _photographs[line.Id] = scan.ToDataUrl();
+            }
+
+            await Watch.RefreshAsync();
         }
-        catch (Exception ex) when (ex is JSException or IOException or FormatException)
+        catch (Exception ex) when (ex is JSException or IOException or FormatException or HttpRequestException)
         {
             Logger.LogError(ex, "A captured frame could not be taken into the stack.");
         }
@@ -491,94 +525,40 @@ else
         return Task.CompletedTask;
     }
 
-    /// <summary>
-    /// Identification runs behind the capture loop so the pile can be worked through at
-    /// the shelf and the confirmations done at the desk.
-    /// </summary>
-    private void QueueIdentification(StackedScan stacked, Format format)
-    {
-        _ = Task.Run(async () =>
-        {
-            await _queue.WaitAsync();
-
-            try
-            {
-                var result = await Identifier.IdentifyAsync(stacked.Scan.Image, stacked.Scan.ContentType, format);
-
-                // Say what actually went wrong: a failed call reported as an unreadable
-                // photograph sends you back to the shelf for a blameless record.
-                if (result.ReadFailure is { } failure)
-                {
-                    stacked.Failed(failure);
-                }
-                else
-                {
-                    stacked.Identified(result);
-                }
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, "Identifying record {Position} failed.", stacked.Position);
-                stacked.Failed("Identification failed. The Discogs or Anthropic call may not be configured.");
-            }
-            finally
-            {
-                _queue.Release();
-
-                try
-                {
-                    await InvokeAsync(StateHasChanged);
-                }
-                catch (ObjectDisposedException)
-                {
-                    // The circuit went while this was running. Nothing to show it to.
-                }
-            }
-        });
-    }
-
     private async Task Review()
     {
-        _reviewing = true;
+        _capturing = false;
         await StopDetector();
     }
 
-    private async Task Confirm(StackedScan stacked, MatchCandidate candidate)
+    private async Task Confirm(StackedScanLine captured, MatchCandidate candidate)
     {
         if (_confirming >= 0)
         {
             return;
         }
 
-        _confirming = stacked.Position;
+        _confirming = captured.Position;
         _error = null;
 
         try
         {
             // First time this pressing is confirmed it is fetched from Discogs and cached;
             // every time after, this is a read of our own catalogue.
-            var release = await Catalogue.EnsureAsync(candidate.DiscogsReleaseId);
-
-            if (release is null)
+            if (!await Stacks.ConfirmAsync(captured.Id, candidate.DiscogsReleaseId))
             {
-                // Discogs may be unreachable, or the release may have been merged into
-                // another since the search. The Scan is untouched, so it can be tried again.
-                _error = $"Record {stacked.Position} could not be fetched from Discogs. Nothing was added.";
-                return;
+                // The Scan is untouched unless another device dealt with it first, so it can
+                // be tried again.
+                _error = $"Record {captured.Position} could not be added. Discogs may be unreachable, "
+                    + "or it was dealt with on another device. Nothing was added.";
             }
 
-            await Collection.AddAsync(release.Id, new CopyDetails
-            {
-                PurchasedFrom = _defaults.PurchasedFrom,
-                Location = _defaults.Location,
-            });
-
-            stacked.Confirm();
+            await Watch.RefreshAsync();
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Confirming record {Position} failed.", stacked.Position);
-            _error = "That could not be added. Discogs or the database may be unreachable.";
+            Logger.LogError(ex, "Confirming record {Position} failed.", captured.Position);
+            _error = "That could not be added. The API may be unreachable.";
         }
         finally
         {
@@ -586,27 +566,42 @@ else
         }
     }
 
-    private void Abandon(StackedScan stacked) => stacked.Abandon();
+    private Task Abandon(StackedScanLine captured) => Change(() => Stacks.AbandonAsync(captured.Id));
 
-    private void SetPurchasedFrom(ChangeEventArgs args) =>
-        SetDefaults(_defaults with { PurchasedFrom = args.Value?.ToString() });
+    private Task SetPurchasedFrom(ChangeEventArgs args) =>
+        SetDefaults(Watch.Current!.Defaults with { PurchasedFrom = args.Value?.ToString() });
 
-    private void SetLocation(ChangeEventArgs args) =>
-        SetDefaults(_defaults with { Location = args.Value?.ToString() });
+    private Task SetLocation(ChangeEventArgs args) =>
+        SetDefaults(Watch.Current!.Defaults with { Location = args.Value?.ToString() });
 
-    private void SetDefaults(StackDefaults defaults)
-    {
-        _defaults = defaults;
-        Session.SetDefaults(defaults);
-    }
+    private Task SetDefaults(StackDefaults defaults) => Change(() => Stacks.SetDefaultsAsync(defaults));
 
     private async Task Discard()
     {
+        _capturing = false;
         await StopDetector();
-        Session.Discard();
-        _reviewing = false;
-        _defaults = StackDefaults.None;
+        await Change(() => Stacks.DiscardAsync());
+        _photographs.Clear();
+    }
+
+    /// <summary>
+    /// Makes one change and reads the Stack back. False from the API means the Stack or Scan
+    /// had already gone, which the read shows for itself.
+    /// </summary>
+    private async Task Change(Func<Task<bool>> change)
+    {
         _error = null;
+
+        try
+        {
+            await change();
+            await Watch.RefreshAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Changing the stack failed.");
+            _error = "That could not be saved. The API may be unreachable.";
+        }
     }
 
     private async Task StopDetector()
@@ -626,7 +621,57 @@ else
         }
     }
 
-    private void OnSessionChanged() => InvokeAsync(StateHasChanged);
+    /// <summary>
+    /// The Stack changed, here or anywhere. One that went from under a running camera —
+    /// thrown away on another device, or abandoned for being left — stops the camera too.
+    /// </summary>
+    private void OnStackChanged()
+    {
+        if (_capturing && Watch.Current is null)
+        {
+            _capturing = false;
+            _ = InvokeAsync(StopDetector);
+        }
+
+        FetchPhotographs();
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    /// <summary>Starts fetching any photograph this page has not seen, each only once.</summary>
+    private void FetchPhotographs()
+    {
+        foreach (var scan in Watch.Current?.Scans ?? [])
+        {
+            if (_photographs.ContainsKey(scan.Id) || !_fetching.Add(scan.Id))
+            {
+                continue;
+            }
+
+            _ = FetchPhotographAsync(scan.Id);
+        }
+    }
+
+    private async Task FetchPhotographAsync(Guid scanId)
+    {
+        try
+        {
+            if (await Stacks.PhotographAsync(scanId) is { } jpeg)
+            {
+                await InvokeAsync(() =>
+                {
+                    _photographs[scanId] = $"data:image/jpeg;base64,{Convert.ToBase64String(jpeg)}";
+                    StateHasChanged();
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "The photograph of scan {ScanId} could not be fetched.", scanId);
+            await InvokeAsync(() => _fetching.Remove(scanId));
+        }
+    }
+
+    private string? Photograph(StackedScanLine scan) => _photographs.GetValueOrDefault(scan.Id);
 
     private static string Counted(int count) => count == 1 ? "1 record" : $"{count} records";
 
@@ -681,7 +726,7 @@ else
 
     public async ValueTask DisposeAsync()
     {
-        Session.Changed -= OnSessionChanged;
+        Watch.Changed -= OnStackChanged;
 
         await StopDetector();
 
@@ -702,7 +747,6 @@ else
         }
 
         _self?.Dispose();
-        _queue.Dispose();
     }
 
     private sealed record CameraProbe(bool HasMediaDevices, bool IsSecureContext);

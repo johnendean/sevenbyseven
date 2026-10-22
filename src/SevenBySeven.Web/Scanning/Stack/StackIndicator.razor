@@ -1,7 +1,7 @@
 @implements IDisposable
-@inject StackSession Session
+@inject StackWatch Watch
 
-@if (Session.Current is { IsEmpty: false } stack && !stack.IsComplete)
+@if (Watch.Current is { HasUnresolvedWork: true } stack)
 {
     <a class="stack-indicator" href="stack">
         <span class="stack-indicator-dot" aria-hidden="true"></span>
@@ -10,13 +10,17 @@
 }
 
 @code {
-    // A Stack lives in the circuit and nowhere else, so one left half-finished is
-    // invisible the moment you navigate off the page. Invisible state you cannot see is
-    // how you end up rescanning a pile you already did.
+    // A half-finished Stack is invisible the moment you navigate off its page, and with the
+    // Stack held in the API it may not even have been started on this device. Invisible state
+    // is how you end up rescanning a pile you already did.
 
-    protected override void OnInitialized() => Session.Changed += OnChanged;
+    protected override void OnInitialized()
+    {
+        Watch.Changed += OnChanged;
+        Watch.Start();
+    }
 
-    private static string Describe(Domain.Stack stack) =>
+    private static string Describe(StackSheet stack) =>
         stack.PendingCount switch
         {
             0 => $"{Counted(stack.Count)} captured",
@@ -28,5 +32,5 @@
 
     private void OnChanged() => InvokeAsync(StateHasChanged);
 
-    public void Dispose() => Session.Changed -= OnChanged;
+    public void Dispose() => Watch.Changed -= OnChanged;
 }

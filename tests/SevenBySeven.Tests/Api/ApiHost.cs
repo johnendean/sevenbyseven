@@ -26,8 +26,13 @@ internal sealed class ApiHost : WebApplicationFactory<Program>
     };
 
     private readonly TestDatabase _database;
+    private readonly (string Key, string Value)[] _settings;
 
-    private ApiHost(TestDatabase database) => _database = database;
+    private ApiHost(TestDatabase database, (string Key, string Value)[] settings)
+    {
+        _database = database;
+        _settings = settings;
+    }
 
     public TestDatabase Database => _database;
 
@@ -36,11 +41,18 @@ internal sealed class ApiHost : WebApplicationFactory<Program>
 
     public StubSleeveIdentifier Identifier { get; } = new();
 
-    public static async Task<ApiHost> StartAsync() => new(await TestDatabase.CreateAsync());
+    /// <param name="settings">Configuration the test needs beyond the database, such as a smaller Stack.</param>
+    public static async Task<ApiHost> StartAsync(params (string Key, string Value)[] settings) =>
+        new(await TestDatabase.CreateAsync(), settings);
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseSetting("ConnectionStrings:sevenbyseven", _database.ConnectionString);
+
+        foreach (var (key, value) in _settings)
+        {
+            builder.UseSetting(key, value);
+        }
 
         builder.ConfigureTestServices(services =>
         {

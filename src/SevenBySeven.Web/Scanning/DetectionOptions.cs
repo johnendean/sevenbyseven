@@ -1,13 +1,15 @@
-namespace SevenBySeven.Modules.Scanning;
+namespace SevenBySeven.Web.Scanning;
 
 /// <summary>
-/// The thresholds the browser's record detector runs on. They are here, rather than in
+/// The thresholds the browser's record detector runs on, bound from <c>Scanning:Detection</c>. They are here, rather than in
 /// the script, because they have no correct value derivable in advance — they were found
 /// by running the detector against real records in real lighting, and a different room
 /// may want different ones (docs/adr/0005).
 /// </summary>
 public sealed class DetectionOptions
 {
+    public const string SectionName = "Scanning:Detection";
+
     /// <summary>How far a pixel must differ from the empty frame to count as something.</summary>
     public int ForegroundDelta { get; set; } = 28;
 

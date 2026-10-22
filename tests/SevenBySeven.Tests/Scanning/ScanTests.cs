@@ -1,4 +1,4 @@
-using SevenBySeven.Modules.Scanning.Domain;
+using SevenBySeven.Modules.Scanning.Contracts;
 
 namespace SevenBySeven.Tests.Scanning;
 

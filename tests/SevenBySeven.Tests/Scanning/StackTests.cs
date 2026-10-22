@@ -1,4 +1,5 @@
 using SevenBySeven.Modules.Identification.Contracts;
+using SevenBySeven.Modules.Scanning.Contracts;
 using SevenBySeven.Modules.Scanning.Domain;
 using Stack = SevenBySeven.Modules.Scanning.Domain.Stack;
 
