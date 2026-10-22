@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
+using Scalar.AspNetCore;
 using SevenBySeven.Shared.Modularity;
 using SevenBySeven.Shared.Persistence;
 
@@ -54,6 +55,13 @@ app.MapDefaultEndpoints();
 
 // The document a client that is not this solution's Web project would build against.
 app.MapOpenApi();
+
+// A page for reading that document and trying the endpoints by hand, at /scalar. Development
+// only, like the health checks: the API has no authentication (docs/adr/0009).
+if (app.Environment.IsDevelopment())
+{
+    app.MapScalarApiReference();
+}
 
 foreach (var module in modules)
 {

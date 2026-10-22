@@ -73,7 +73,9 @@ dotnet run --project src/SevenBySeven.AppHost
 ```
 
 Aspire starts Postgres, then the API, which applies migrations on boot, then the web app
-at <https://localhost:7066>. The dashboard URL is printed on startup.
+at <https://localhost:7066>. The dashboard URL is printed on startup. The dashboard also
+links the API's reference, a Scalar page for reading the OpenAPI document and trying the
+endpoints by hand.
 
 Settings can be given as environment variables on that command, as the examples below
 do. Aspire passes its own environment on to both the API and the web app, so a setting

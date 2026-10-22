@@ -23,4 +23,16 @@ public class ApiHostTests
         Assert.Contains("/gigs/{gigId}", paths);
         Assert.Contains("/identifications", paths);
     }
+
+    [Fact]
+    public async Task The_published_document_can_be_read_in_a_browser()
+    {
+        await using var host = await ApiHost.StartAsync();
+        using var client = host.CreateClient();
+
+        var response = await client.GetAsync("/scalar");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("text/html", response.Content.Headers.ContentType?.MediaType);
+    }
 }

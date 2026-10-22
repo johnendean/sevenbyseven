@@ -16,7 +16,8 @@ var database = postgres.AddDatabase("sevenbyseven");
 var api = builder.AddProject<Projects.SevenBySeven_Api>("api")
     .WithReference(database)
     .WaitFor(database)
-    .WithHttpHealthCheck("/health");
+    .WithHttpHealthCheck("/health")
+    .WithUrlForEndpoint("http", _ => new() { Url = "/scalar", DisplayText = "API reference" });
 
 // The web app reaches everything through the API and holds no database connection of
 // its own. It waits for the API to be healthy so its first page has something to read.
