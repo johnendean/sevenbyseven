@@ -1,0 +1,18 @@
+.camera-picker {
+    position: absolute;
+    left: 0.75rem;
+    top: 0.75rem;
+    max-width: calc(100% - 7rem);
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    z-index: 1;
+}
+
+.camera-picker-error {
+    background: rgba(0, 0, 0, 0.72);
+    color: #fff;
+    border-radius: 0.25rem;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.8125rem;
+}

@@ -7,7 +7,7 @@
 // and returns the next state and an effect for this file to carry out. Keep it that
 // way — it is the part that was actually tested against real records.
 
-import { start as startCamera, stopStream, toJpeg } from "./camera.js";
+import { onSwitched, start as startCamera, stopStream, toJpeg } from "./camera.js";
 
 /** Working resolution. Small is fast, and less twitchy than full frames. */
 const W = 160, H = 120;
@@ -203,6 +203,7 @@ let video = null, box = null, badge = null, owner = null;
 let thresholds = null, capture = null;
 let background = null, prevLuma = null, state = null;
 let capturing = false, paused = false;
+let unsubscribe = null;
 
 export function probe() {
     return {
@@ -217,7 +218,10 @@ export function probe() {
  * @param dotNetRef receives OnCaptured and OnPhaseChanged.
  */
 export async function start(videoEl, boxEl, badgeEl, options, dotNetRef) {
-    await startCamera(videoEl);
+    // Stopped, or started again, while the camera was still opening: that call owns the detector now.
+    if (!(await startCamera(videoEl))) {
+        return;
+    }
 
     video = videoEl;
     box = boxEl;
@@ -232,12 +236,17 @@ export async function start(videoEl, boxEl, badgeEl, options, dotNetRef) {
     paused = false;
     state = { ...Detector.initial };
 
+    unsubscribe?.();
+    unsubscribe = onSwitched(restart);
+
     stopTimer();
     timer = setInterval(tick, 1000 / FPS);
     paint({ box: null }, state);
 }
 
 export function stop() {
+    unsubscribe?.();
+    unsubscribe = null;
     stopTimer();
     stopStream();
     if (box) box.style.display = "none";
@@ -255,6 +264,24 @@ export function resume() {
     // The scene has almost certainly moved on, so start from a fresh reference frame.
     background = null;
     state = { ...Detector.initial };
+}
+
+/**
+ * Another camera was chosen mid-Stack. Its picture has nothing in common with the last
+ * one's, so learn the empty frame again. A full Stack stays paused, and what was
+ * captured stays counted.
+ */
+function restart() {
+    background = null;
+    prevLuma = null;
+    state = { ...Detector.initial, captures: state?.captures ?? 0 };
+    if (paused) {
+        return;
+    }
+    paint({ box: null }, state);
+    if (owner) {
+        owner.invokeMethodAsync("OnPhaseChanged", state.phase, state.note).catch(() => { });
+    }
 }
 
 function stopTimer() {

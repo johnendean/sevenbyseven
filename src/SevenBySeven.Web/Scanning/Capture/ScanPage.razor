@@ -99,6 +99,10 @@ else
     {
         <div class="scan-stage @(_cameraStarted ? null : "scan-stage-idle")">
             <video @ref="_video" playsinline muted autoplay></video>
+            @if (_cameraStarted)
+            {
+                <CameraPicker />
+            }
         </div>
 
         <div class="scan-actions">
@@ -201,8 +205,8 @@ else
         _error = null;
         try
         {
-            await _camera.InvokeVoidAsync("start", _video);
-            _cameraStarted = true;
+            // False when it was stopped before it finished, and the page has moved on.
+            _cameraStarted = await _camera.InvokeAsync<bool>("start", _video);
         }
         catch (JSException ex)
         {
