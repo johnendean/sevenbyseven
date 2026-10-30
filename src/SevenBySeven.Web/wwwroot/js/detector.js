@@ -218,7 +218,10 @@ export function probe() {
  * @param dotNetRef receives OnCaptured and OnPhaseChanged.
  */
 export async function start(videoEl, boxEl, badgeEl, options, dotNetRef) {
-    await startCamera(videoEl);
+    // Stopped, or started again, while the camera was still opening: that call owns the detector now.
+    if (!(await startCamera(videoEl))) {
+        return;
+    }
 
     video = videoEl;
     box = boxEl;

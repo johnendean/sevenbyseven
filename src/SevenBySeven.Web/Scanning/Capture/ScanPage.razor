@@ -205,8 +205,8 @@ else
         _error = null;
         try
         {
-            await _camera.InvokeVoidAsync("start", _video);
-            _cameraStarted = true;
+            // False when it was stopped before it finished, and the page has moved on.
+            _cameraStarted = await _camera.InvokeAsync<bool>("start", _video);
         }
         catch (JSException ex)
         {

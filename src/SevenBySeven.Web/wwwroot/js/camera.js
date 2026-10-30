@@ -13,23 +13,27 @@ let video = null;
 let current = null;
 
 /**
- * Moved on whenever the camera is stopped or started afresh. A camera that finishes
- * opening after that — the page left, or capture stopped, mid-permission-prompt or
- * mid-switch — belongs to nobody and is shut straight back off.
+ * Moved on by every change of camera, and by stopping it. Only the latest change may
+ * take the stream: one overtaken while its camera was opening — by a stop, a newer
+ * start, a switch or an unplugging — shuts that camera straight back off and is
+ * Superseded, whether the camera opened or failed.
  */
-let session = 0;
+let generation = 0;
+
+/** The changes of camera, one at a time: some phones cannot open two cameras at once. */
+let queue = Promise.resolve();
 
 /** Told the camera list and the current camera whenever either may have changed, by token. */
 const watchers = new Map();
 let nextWatcher = 0;
 
-/** A camera that opened for a session which has since ended. Nothing to report or recover. */
+/** Told whenever the stream moves to another camera, so whatever reads frames can start afresh. */
+const switchListeners = new Set();
+
+/** A change of camera overtaken by a later one. Nothing to report or recover. */
 class Superseded extends Error {
     name = "Superseded";
 }
-
-/** Told whenever the stream moves to another camera, so whatever reads frames can start afresh. */
-const switchListeners = new Set();
 
 export function probe() {
     return {
@@ -42,17 +46,18 @@ export function probe() {
 
 /**
  * Starts the camera remembered on this device, or the rear-facing one when nothing is
- * remembered or the remembered one is no longer there.
+ * remembered or the remembered one is no longer there. False when the start was
+ * overtaken — the camera stopped, or started again — before it finished.
  */
 export async function start(videoEl) {
     stopStream();
     video = videoEl;
 
-    try {
+    return settled(change(async mine => {
         const remembered = read(CameraKey);
         if (remembered) {
             try {
-                await open(remembered);
+                await open(remembered, mine);
                 return;
             } catch (error) {
                 // Declining permission is not the camera being gone; trying another will only ask again.
@@ -62,12 +67,8 @@ export async function start(videoEl) {
             }
         }
 
-        await open(null);
-    } catch (error) {
-        if (!(error instanceof Superseded)) {
-            throw error;
-        }
-    }
+        await open(null, mine);
+    }));
 }
 
 /**
@@ -79,31 +80,32 @@ export async function switchTo(deviceId) {
         return;
     }
 
-    const previous = current;
-    stopTracks();
+    await settled(change(async mine => {
+        const previous = current;
 
-    try {
-        await open(deviceId);
-    } catch (error) {
-        if (error instanceof Superseded) {
-            return;
-        }
         try {
-            await open(previous);
-        } catch (retry) {
-            if (retry instanceof Superseded) {
-                return;
+            await open(deviceId, mine);
+        } catch (error) {
+            if (error instanceof Superseded) {
+                throw error;
             }
-            await fallBack();
+            try {
+                await open(previous, mine);
+            } catch (retry) {
+                if (retry instanceof Superseded) {
+                    throw retry;
+                }
+                await fallBack(mine);
+            }
+            throw error;
         }
-        throw error;
-    }
 
-    write(CameraKey, deviceId);
+        write(CameraKey, deviceId);
+    }));
 }
 
 export function stopStream() {
-    session++;
+    generation++;
     stopTracks();
     video = null;
     current = null;
@@ -133,21 +135,57 @@ export function onSwitched(callback) {
     return () => switchListeners.delete(callback);
 }
 
-/** A null deviceId asks for the rear-facing camera, or whatever the browser offers instead. */
-async function open(deviceId) {
-    const camera = deviceId ? { deviceId: { exact: deviceId } } : { facingMode: { ideal: "environment" } };
-    const opening = session;
-
-    const opened = await navigator.mediaDevices.getUserMedia({
-        video: {
-            ...camera,
-            width: { ideal: 1920 },
-            height: { ideal: 1920 },
-        },
-        audio: false,
+/**
+ * Queues a change of camera behind any already running, and overtakes every one still
+ * waiting or opening. The change is handed its generation to open cameras under.
+ */
+function change(run) {
+    const mine = ++generation;
+    const next = queue.then(() => {
+        if (mine !== generation) {
+            throw new Superseded();
+        }
+        return run(mine);
     });
+    queue = next.catch(() => { });
+    return next;
+}
 
-    if (opening !== session) {
+/** True once a change has gone through, false when it was overtaken; any other failure is thrown. */
+async function settled(pending) {
+    try {
+        await pending;
+        return true;
+    } catch (error) {
+        if (error instanceof Superseded) {
+            return false;
+        }
+        throw error;
+    }
+}
+
+/** A null deviceId asks for the rear-facing camera, or whatever the browser offers instead. */
+async function open(deviceId, mine) {
+    const camera = deviceId ? { deviceId: { exact: deviceId } } : { facingMode: { ideal: "environment" } };
+
+    // Let go of the running camera first, as a phone may not open a second one alongside it.
+    stopTracks();
+
+    let opened;
+    try {
+        opened = await navigator.mediaDevices.getUserMedia({
+            video: {
+                ...camera,
+                width: { ideal: 1920 },
+                height: { ideal: 1920 },
+            },
+            audio: false,
+        });
+    } catch (error) {
+        throw mine === generation ? error : new Superseded();
+    }
+
+    if (mine !== generation) {
         for (const track of opened.getTracks()) {
             track.stop();
         }
@@ -159,7 +197,16 @@ async function open(deviceId) {
     current = stream.getVideoTracks()[0]?.getSettings().deviceId ?? deviceId;
 
     video.srcObject = stream;
-    await video.play();
+    try {
+        await video.play();
+    } catch (error) {
+        // A stop while it played has shut this stream off and interrupted the play.
+        throw mine === generation ? error : new Superseded();
+    }
+
+    if (mine !== generation) {
+        throw new Superseded();
+    }
 
     if (previous && previous !== current) {
         for (const listener of switchListeners) {
@@ -171,12 +218,12 @@ async function open(deviceId) {
 }
 
 /** The default camera, or none at all when even that will not start. */
-async function fallBack() {
+async function fallBack(mine) {
     try {
-        await open(null);
+        await open(null, mine);
     } catch (error) {
         if (error instanceof Superseded) {
-            return;
+            throw error;
         }
         current = null;
         notify();
@@ -221,18 +268,23 @@ async function notify() {
 /**
  * A camera plugged in or out. One that took the running stream with it falls back to the
  * default camera, without forgetting the one remembered — it may well be plugged back in.
+ * Anything else that changed the camera while the list was read has the last word.
  */
 async function onDeviceChange() {
+    const seen = generation;
+
     if (stream && current) {
         try {
             const list = await cameras();
+            if (seen !== generation) {
+                return;
+            }
             if (!list.some(camera => camera.id === current)) {
-                stopTracks();
-                await fallBack();
+                await settled(change(fallBack));
                 return;
             }
         } catch {
-            // No list to check against; leave the stream as it is.
+            // No list to check against, or the default would not start; the picker hears below.
         }
     }
 
