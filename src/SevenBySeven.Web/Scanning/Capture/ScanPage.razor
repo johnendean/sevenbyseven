@@ -99,6 +99,10 @@ else
     {
         <div class="scan-stage @(_cameraStarted ? null : "scan-stage-idle")">
             <video @ref="_video" playsinline muted autoplay></video>
+            @if (_cameraStarted)
+            {
+                <CameraPicker />
+            }
         </div>
 
         <div class="scan-actions">

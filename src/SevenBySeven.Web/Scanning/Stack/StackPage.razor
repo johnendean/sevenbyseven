@@ -86,6 +86,7 @@ else if (_capturing)
         <div class="stack-box" @ref="_box"></div>
         <div class="stack-badge" @ref="_badge"></div>
         <div class="stack-count">@stack.Count / @stack.Capacity</div>
+        <CameraPicker />
     </div>
 
     @if (stack.IsFull)

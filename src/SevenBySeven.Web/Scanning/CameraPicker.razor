@@ -1,0 +1,111 @@
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+@inject ILogger<CameraPicker> Logger
+
+@* Sits over a running camera's preview. Nothing shows until there is a choice to make. *@
+@if (_cameras.Count > 1)
+{
+    <div class="camera-picker" data-bs-theme="dark">
+        <select class="form-select form-select-sm" aria-label="Camera"
+                value="@_current" @onchange="Choose" disabled="@_switching">
+            @foreach (var camera in _cameras)
+            {
+                <option value="@camera.Id">@camera.Label</option>
+            }
+        </select>
+        @if (_error is not null)
+        {
+            <span class="camera-picker-error" role="alert">@_error</span>
+        }
+    </div>
+}
+
+@code {
+    private const string ModulePath = "./js/camera.js";
+
+    private IJSObjectReference? _camera;
+    private DotNetObjectReference<CameraPicker>? _self;
+    private IReadOnlyList<CameraChoice> _cameras = [];
+    private string? _current;
+    private bool _switching;
+    private string? _error;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        try
+        {
+            // The same module the page started the camera through, so it knows which one is running.
+            _camera = await JS.InvokeAsync<IJSObjectReference>("import", ModulePath);
+            _self = DotNetObjectReference.Create(this);
+            await _camera.InvokeVoidAsync("watch", _self);
+        }
+        catch (JSException ex)
+        {
+            Logger.LogWarning(ex, "The camera list could not be watched.");
+        }
+    }
+
+    /// <summary>The cameras on offer, or none while no camera is running.</summary>
+    [JSInvokable]
+    public Task OnCamerasChanged(CameraChoice[] cameras, string? current) =>
+        InvokeAsync(() =>
+        {
+            _cameras = cameras;
+            _current = current;
+            StateHasChanged();
+        });
+
+    private async Task Choose(ChangeEventArgs args)
+    {
+        if (_camera is null || args.Value?.ToString() is not { Length: > 0 } deviceId)
+        {
+            return;
+        }
+
+        // Matches what the select already shows, so a failed switch reporting the previous
+        // camera back is a change the render puts on screen.
+        _current = deviceId;
+        _error = null;
+        _switching = true;
+
+        try
+        {
+            await _camera.InvokeVoidAsync("switchTo", deviceId);
+        }
+        catch (JSException ex)
+        {
+            // Most often another app has the camera. The previous one is back on by now.
+            Logger.LogWarning(ex, "Camera {DeviceId} could not be started.", deviceId);
+            _error = "That camera could not be started. It may be in use elsewhere.";
+        }
+        finally
+        {
+            _switching = false;
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_camera is not null)
+        {
+            try
+            {
+                await _camera.InvokeVoidAsync("unwatch", _self);
+                await _camera.DisposeAsync();
+            }
+            catch (JSDisconnectedException)
+            {
+                // The circuit is already gone; nothing to clean up browser-side.
+            }
+        }
+
+        _self?.Dispose();
+    }
+
+    public sealed record CameraChoice(string Id, string Label);
+}
