@@ -12,8 +12,21 @@ let video = null;
 /** The device the stream is running on, as the browser reported it. */
 let current = null;
 
-/** Told the camera list and the current camera whenever either may have changed. */
-const watchers = new Set();
+/**
+ * Moved on whenever the camera is stopped or started afresh. A camera that finishes
+ * opening after that — the page left, or capture stopped, mid-permission-prompt or
+ * mid-switch — belongs to nobody and is shut straight back off.
+ */
+let session = 0;
+
+/** Told the camera list and the current camera whenever either may have changed, by token. */
+const watchers = new Map();
+let nextWatcher = 0;
+
+/** A camera that opened for a session which has since ended. Nothing to report or recover. */
+class Superseded extends Error {
+    name = "Superseded";
+}
 
 /** Told whenever the stream moves to another camera, so whatever reads frames can start afresh. */
 const switchListeners = new Set();
@@ -35,20 +48,26 @@ export async function start(videoEl) {
     stopStream();
     video = videoEl;
 
-    const remembered = read(CameraKey);
-    if (remembered) {
-        try {
-            await open(remembered);
-            return;
-        } catch (error) {
-            // Declining permission is not the camera being gone; trying another will only ask again.
-            if (error?.name === "NotAllowedError") {
-                throw error;
+    try {
+        const remembered = read(CameraKey);
+        if (remembered) {
+            try {
+                await open(remembered);
+                return;
+            } catch (error) {
+                // Declining permission is not the camera being gone; trying another will only ask again.
+                if (error instanceof Superseded || error?.name === "NotAllowedError") {
+                    throw error;
+                }
             }
         }
-    }
 
-    await open(null);
+        await open(null);
+    } catch (error) {
+        if (!(error instanceof Superseded)) {
+            throw error;
+        }
+    }
 }
 
 /**
@@ -66,9 +85,15 @@ export async function switchTo(deviceId) {
     try {
         await open(deviceId);
     } catch (error) {
+        if (error instanceof Superseded) {
+            return;
+        }
         try {
             await open(previous);
-        } catch {
+        } catch (retry) {
+            if (retry instanceof Superseded) {
+                return;
+            }
             await fallBack();
         }
         throw error;
@@ -78,6 +103,7 @@ export async function switchTo(deviceId) {
 }
 
 export function stopStream() {
+    session++;
     stopTracks();
     video = null;
     current = null;
@@ -87,14 +113,18 @@ export function stopStream() {
 /**
  * Keeps a picker told of the cameras on offer. It hears straight away if a camera is
  * already running, and again whenever one starts, switches or is plugged in or out.
+ * Returns the token to stop with: a .NET reference passed in twice arrives as two
+ * different objects, so it cannot identify the watcher itself.
  */
 export function watch(dotNetRef) {
-    watchers.add(dotNetRef);
+    const token = ++nextWatcher;
+    watchers.set(token, dotNetRef);
     notify();
+    return token;
 }
 
-export function unwatch(dotNetRef) {
-    watchers.delete(dotNetRef);
+export function unwatch(token) {
+    watchers.delete(token);
 }
 
 /** Calls back whenever the stream moves to another camera. Returns the way to stop listening. */
@@ -106,8 +136,9 @@ export function onSwitched(callback) {
 /** A null deviceId asks for the rear-facing camera, or whatever the browser offers instead. */
 async function open(deviceId) {
     const camera = deviceId ? { deviceId: { exact: deviceId } } : { facingMode: { ideal: "environment" } };
+    const opening = session;
 
-    stream = await navigator.mediaDevices.getUserMedia({
+    const opened = await navigator.mediaDevices.getUserMedia({
         video: {
             ...camera,
             width: { ideal: 1920 },
@@ -116,6 +147,14 @@ async function open(deviceId) {
         audio: false,
     });
 
+    if (opening !== session) {
+        for (const track of opened.getTracks()) {
+            track.stop();
+        }
+        throw new Superseded();
+    }
+
+    stream = opened;
     const previous = current;
     current = stream.getVideoTracks()[0]?.getSettings().deviceId ?? deviceId;
 
@@ -135,7 +174,10 @@ async function open(deviceId) {
 async function fallBack() {
     try {
         await open(null);
-    } catch {
+    } catch (error) {
+        if (error instanceof Superseded) {
+            return;
+        }
         current = null;
         notify();
     }
@@ -171,7 +213,7 @@ async function notify() {
         // No list to offer; the picker hides itself.
     }
 
-    for (const watcher of watchers) {
+    for (const watcher of watchers.values()) {
         watcher.invokeMethodAsync("OnCamerasChanged", list, current).catch(() => { });
     }
 }

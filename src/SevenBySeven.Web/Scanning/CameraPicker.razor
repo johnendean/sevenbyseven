@@ -25,6 +25,7 @@
 
     private IJSObjectReference? _camera;
     private DotNetObjectReference<CameraPicker>? _self;
+    private int? _watch;
     private IReadOnlyList<CameraChoice> _cameras = [];
     private string? _current;
     private bool _switching;
@@ -42,7 +43,7 @@
             // The same module the page started the camera through, so it knows which one is running.
             _camera = await JS.InvokeAsync<IJSObjectReference>("import", ModulePath);
             _self = DotNetObjectReference.Create(this);
-            await _camera.InvokeVoidAsync("watch", _self);
+            _watch = await _camera.InvokeAsync<int>("watch", _self);
         }
         catch (JSException ex)
         {
@@ -95,7 +96,11 @@
         {
             try
             {
-                await _camera.InvokeVoidAsync("unwatch", _self);
+                if (_watch is { } watch)
+                {
+                    await _camera.InvokeVoidAsync("unwatch", watch);
+                }
+
                 await _camera.DisposeAsync();
             }
             catch (JSDisconnectedException)
